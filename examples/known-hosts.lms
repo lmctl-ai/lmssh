@@ -1,0 +1,22 @@
+# known-hosts
+# usage: lmssh --dsl known-hosts.dslb -- KNOWN_HOSTS_FILE HOST [HOST ...]
+# Reports which hosts have a key on file; with LMSSH_FORGET=1 it removes the stale entries (ssh-keygen -R).
+out = ARGV.len() > 0 ? ARGV[0] : "build/known-hosts.dslb";
+p = _dsl_ schema="../schema/lmssh.dsl.json";
+let args = io.args();
+if (args.len() < 2) { io.fail("usage: lmssh --dsl known-hosts.dslb -- KNOWN_HOSTS_FILE HOST [HOST ...]"); }
+for (i in range(1, args.len())) {
+  let found = keys.known_hosts_find(args.at(i), args.at(0));
+  if (found == "") {
+    report.add("unknown", args.at(i), 0, "no key on file in " + args.at(0));
+    continue;
+  }
+  io.print(args.at(i) + ": on file");
+  if (io.env("LMSSH_FORGET") == "1") {
+    keys.known_hosts_remove(args.at(i), args.at(0));
+    io.print(args.at(i) + ": removed");
+  }
+}
+report.print();
+end _dsl_
+savedsl(p, out);

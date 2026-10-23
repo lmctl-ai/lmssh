@@ -1,0 +1,34 @@
+# fleet-check
+# usage: lmssh --dsl fleet-check.dslb -- HOSTS_FILE COMMAND [REPORT_FILE]
+# Runs COMMAND on every host in parallel (blank lines and # comments skipped). Hosts where it fails are findings;
+# the exit status is 4 when there is at least one.
+out = ARGV.len() > 0 ? ARGV[0] : "build/fleet-check.dslb";
+p = _dsl_ schema="../schema/lmssh.dsl.json";
+# Optional: LMSSH_SSH_CONFIG points at an ssh_config(5) file; otherwise ~/.ssh/config applies as usual.
+if (io.env("LMSSH_SSH_CONFIG") != "") { ssh.config(io.env("LMSSH_SSH_CONFIG")); }
+let args = io.args();
+if (args.len() < 2) { io.fail("usage: lmssh --dsl fleet-check.dslb -- HOSTS_FILE COMMAND [REPORT_FILE]"); }
+let lines = io.lines(args.at(0));
+let hosts = str_list();
+for (i in range(0, lines.len())) {
+  let line = str_trim(lines.at(i));
+  if (line == "" || str_starts_with(line, "#")) { continue; }
+  hosts.add(line);
+}
+ssh.parallel(16).timeout(60).connect_timeout(10);
+let results = ssh.each(hosts, args.at(1));
+for (i in range(0, results.len())) {
+  let r = results.at(i);
+  if (r.ok()) {
+    io.print(r.dest() + ": " + str_trim(r.stdout()));
+  } else {
+    let why = "exit " + str(r.status()) + " " + str_trim(r.stderr());
+    if (r.timed_out()) { why = "timed out"; }
+    report.add("failed", r.dest(), r.status(), why);
+  }
+}
+io.print(str(hosts.len() - report.count()) + " ok, " + str(report.count()) + " failed");
+if (args.len() > 2) { report.write_text(args.at(2)); }
+report.fail_if_any();
+end _dsl_
+savedsl(p, out);

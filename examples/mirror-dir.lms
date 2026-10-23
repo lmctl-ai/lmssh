@@ -1,0 +1,21 @@
+# mirror-dir
+# usage: lmssh --dsl mirror-dir.dslb -- DEST REMOTE_DIR LOCAL_DIR
+# Downloads files that exist remotely (one level) but not yet locally; lists with sftp, copies with scp.
+out = ARGV.len() > 0 ? ARGV[0] : "build/mirror-dir.dslb";
+p = _dsl_ schema="../schema/lmssh.dsl.json";
+if (io.env("LMSSH_SSH_CONFIG") != "") { ssh.config(io.env("LMSSH_SSH_CONFIG")); }
+let args = io.args();
+if (args.len() != 3) { io.fail("usage: lmssh --dsl mirror-dir.dslb -- DEST REMOTE_DIR LOCAL_DIR"); }
+io.mkdir(args.at(2));
+let s = ssh.connect(args.at(0)).reuse(true);
+let names = s.ls(args.at(1));
+let fetched = 0;
+for (i in range(0, names.len())) {
+  let name = names.at(i);
+  if (io.exists(args.at(2) + "/" + name)) { continue; }
+  s.get(args.at(1) + "/" + name, args.at(2) + "/" + name);
+  fetched = fetched + 1;
+}
+io.print("fetched " + str(fetched) + " of " + str(names.len()) + " files");
+end _dsl_
+savedsl(p, out);
