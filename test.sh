@@ -249,8 +249,9 @@ io.print("bad failed=" + str(bad.failed()));
 bad.require_all();
 E2
   [ "$RC" = 3 ] || fail "require_all must fail (rc=$RC)"
-  expect_contains "$OUT" "n=3 failed=0 secs=1" "three 1s commands run in parallel (~1s)" || true
-  contains "$OUT" "secs=1" || contains "$OUT" "secs=2" || fail "parallel each took too long: $OUT"
+  expect_contains "$OUT" "n=3 failed=0" "each() results"
+  secs="$(printf '%s' "$OUT" | sed -n 's/.*secs=\([0-9][0-9]*\).*/\1/p')"
+  [ -n "$secs" ] && [ "$secs" -le 2 ] || fail "three 1s commands should overlap (sequential would take 3s+): $OUT"
   expect_contains "$OUT" "bad failed=1" "failed()"
   ok "Ssh.each runs commands in parallel and reports failures"
 
