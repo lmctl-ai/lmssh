@@ -55,6 +55,9 @@ target_link_libraries(lmssh PRIVATE ${OPENSSH_LIBS} ${OPENSSH_LIBS} "${CRYPTO_ST
 if(UNIX AND NOT APPLE)
   target_link_libraries(lmssh PRIVATE pthread)
 endif()
+if(APPLE)
+  target_link_libraries(lmssh PRIVATE resolv)  # openbsd-compat getrrsetbyname (res_query)
+endif()
 target_compile_options(lmssh PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wpedantic>)
 # "Clang" also matches AppleClang; macOS has no -static/-static-libstdc++.
 if((CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang") AND NOT APPLE)
