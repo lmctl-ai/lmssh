@@ -37,8 +37,8 @@ if [ -z "${SKIP_BUILD:-}" ]; then
   [ -n "${OPENSSL_DIR:-}" ] && CMAKE_ARGS+=(-DOPENSSL_DIR="$OPENSSL_DIR")
   [ "${LMSSH_FULL_STATIC:-}" = OFF ] && CMAKE_ARGS+=(-DLMSSH_FULL_STATIC=OFF)
   GEN=(); command -v ninja >/dev/null 2>&1 && GEN=(-G Ninja)
-  cmake -S . -B "$BUILD_DIR" ${GEN[@]+"${GEN[@]}"} "${CMAKE_ARGS[@]}" >/dev/null
-  cmake --build "$BUILD_DIR" >/dev/null
+  cmake -S . -B "$BUILD_DIR" ${GEN[@]+"${GEN[@]}"} "${CMAKE_ARGS[@]}" >"$WORK/build.log" 2>&1 || { tail -40 "$WORK/build.log" >&2; fail "cmake configure"; }
+  cmake --build "$BUILD_DIR" >>"$WORK/build.log" 2>&1 || { tail -60 "$WORK/build.log" >&2; for l in "$BUILD_DIR"/openssh/*.log; do [ -f "$l" ] && { echo "== $l" >&2; tail -30 "$l" >&2; }; done; fail "build"; }
 fi
 [ -x "$HOST" ] || fail "no executable at $HOST"
 ok "lmssh built"
