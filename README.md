@@ -16,6 +16,18 @@ lmssh ssh-keygen -t ed25519 -f ~/.ssh/id    # the real ssh-keygen
 
 Invoked through a symlink named `ssh`, `sftp`, `scp` or `ssh-keygen`, the executable behaves as that program. `sftp` and `scp` use the same executable as their `ssh` transport, and `ProxyJump` works the same way.
 
+## Gallery
+
+| **Fleet execution** | **Atomic file deployment** | **Known hosts inventory** |
+| --- | --- | --- |
+| <img src="docs/images/fleet-check.png" width="290"> | <img src="docs/images/deploy-file.png" width="290"> | <img src="docs/images/known-hosts.png" width="290"> |
+| Parallel command execution across a server fleet with aggregate reporting.<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmssh/main/examples/fleet-check.lms` | SFTP upload, sha256 checksum verification, and atomic file replacement.<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmssh/main/examples/deploy-file.lms` | Query known_hosts inventory and detect unverified endpoints.<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmssh/main/examples/known-hosts.lms` |
+
+| **Key signing & verification** | **CA & certificate issuance** | **lmssh CLI & Schema** |
+| --- | --- | --- |
+| <img src="docs/images/sign-verify.png" width="290"> | <img src="docs/images/issue-cert.png" width="290"> | <img src="docs/images/lmssh-cli.png" width="290"> |
+| Cryptographic file signing with SSH Ed25519 keys and tamper validation.<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmssh/main/examples/sign-verify.lms` | Generate Certificate Authority, user keys, and issue SSH certificates.<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmssh/main/examples/issue-cert.lms` | Embedded OpenSSH 10.6p1 suite and strongly typed DSL schema.<br>`lmssh --version && lmssh ssh -V` |
+
 ## A script
 
 ```
@@ -42,18 +54,6 @@ lmssh --dsl job.dslb -- arg1 arg2   # script arguments, read with io.args()
 ```
 
 The API covers sessions (`exec`, `output`, `put`, `get`, `put_dir`, `get_dir`, `cat`, `write`, `ls`, `exists`, `mkdir`, `rm`, `rename`, raw `sftp` batches), parallel fan-out over many hosts, jump hosts, connection reuse, timeouts, password and passphrase prompts, key generation, fingerprints, certificates, signatures, `known_hosts` maintenance, and a small `io` and `report` toolbox. See [durable-memory/04-api.md](durable-memory/04-api.md) for the reference and [examples/](examples/) for ready-to-run scripts.
-
-## Gallery
-
-| **Fleet execution** | **Atomic file deployment** | **Known hosts inventory** |
-| --- | --- | --- |
-| <img src="docs/images/fleet-check.png" width="290"> | <img src="docs/images/deploy-file.png" width="290"> | <img src="docs/images/known-hosts.png" width="290"> |
-| Parallel command execution across a server fleet with aggregate reporting.<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmssh/main/examples/fleet-check.lms` | SFTP upload, sha256 checksum verification, and atomic file replacement.<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmssh/main/examples/deploy-file.lms` | Query known_hosts inventory and detect unverified endpoints.<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmssh/main/examples/known-hosts.lms` |
-
-| **Key signing & verification** | **CA & certificate issuance** | **lmssh CLI & Schema** |
-| --- | --- | --- |
-| <img src="docs/images/sign-verify.png" width="290"> | <img src="docs/images/issue-cert.png" width="290"> | <img src="docs/images/lmssh-cli.png" width="290"> |
-| Cryptographic file signing with SSH Ed25519 keys and tamper validation.<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmssh/main/examples/sign-verify.lms` | Generate Certificate Authority, user keys, and issue SSH certificates.<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmssh/main/examples/issue-cert.lms` | Embedded OpenSSH 10.6p1 suite and strongly typed DSL schema.<br>`lmssh --version && lmssh ssh -V` |
 
 ## How it works
 
