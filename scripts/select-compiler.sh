@@ -9,14 +9,15 @@ fi
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/lmssh-compiler-XXXXXX")"
 trap 'rm -rf "$WORK"' EXIT
 candidate="$(command -v lmscript || true)"
+python3 "$HERE/scripts/merge-std.py" "$HERE/schema/lmssh.host.json" "$WORK/probe.schema.json"
 # JSON string quoting also supports checkouts whose paths contain spaces/quotes.
-python3 - "$HERE/schema/lmssh.dsl.json" "$WORK" <<'PY'
+python3 - "$WORK/probe.schema.json" "$WORK" <<'PY'
 import json,pathlib,sys
 work=pathlib.Path(sys.argv[2])
 (work/'probe.lms').write_text('p = _dsl_ schema='+json.dumps(sys.argv[1])+';\nwhile (false) {}\nend _dsl_\nsavedsl(p, '+json.dumps(str(work/'probe.dslb'))+');\n')
 PY
 if [ -n "$candidate" ] &&
-   "$candidate" --dsl-signatures "$HERE/schema/lmssh.dsl.json" > /dev/null 2>&1 &&
+   "$candidate" --dsl-signatures "$WORK/probe.schema.json" > /dev/null 2>&1 &&
    "$candidate" "$WORK/probe.lms" "$WORK/probe.dslb" > /dev/null 2>&1 &&
    python3 - "$WORK/probe.dslb" <<'PY'
 import pathlib,sys
