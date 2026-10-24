@@ -1,0 +1,213 @@
+{
+  "dsl.schema": 2,
+  "name": "lmssh",
+  "types": {
+    "FloatList": {
+      "methods": {
+        "add": [{"params": ["float"], "returns": "FloatList"}],
+        "at": [{"params": ["int"], "returns": "float"}],
+        "clear": [{"params": [], "returns": "FloatList"}],
+        "contains": [{"params": ["float"], "returns": "bool"}],
+        "index_of": [{"params": ["float"], "returns": "int"}],
+        "len": [{"params": [], "returns": "int"}],
+        "set": [{"params": ["int", "float"], "returns": "FloatList"}]
+      }
+    },
+    "IntList": {
+      "methods": {
+        "add": [{"params": ["int"], "returns": "IntList"}],
+        "at": [{"params": ["int"], "returns": "int"}],
+        "clear": [{"params": [], "returns": "IntList"}],
+        "contains": [{"params": ["int"], "returns": "bool"}],
+        "index_of": [{"params": ["int"], "returns": "int"}],
+        "len": [{"params": [], "returns": "int"}],
+        "set": [{"params": ["int", "int"], "returns": "IntList"}]
+      }
+    },
+    "Io": {
+      "methods": {
+        "append": [{"params": ["string", "string"], "returns": "void"}],
+        "args": [{"params": [], "returns": "StrList"}],
+        "env": [{"params": ["string"], "returns": "string"}],
+        "eprint": [{"params": ["string"], "returns": "void"}],
+        "exists": [{"params": ["string"], "returns": "bool"}],
+        "fail": [{"params": ["string"], "returns": "void"}],
+        "lines": [{"params": ["string"], "returns": "StrList"}],
+        "mkdir": [{"params": ["string"], "returns": "void"}],
+        "now": [{"params": [], "returns": "int"}],
+        "print": [{"params": ["string"], "returns": "void"}],
+        "read": [{"params": ["string"], "returns": "string"}],
+        "remove": [{"params": ["string"], "returns": "void"}],
+        "sha256": [{"params": ["string"], "returns": "string"}],
+        "sleep_ms": [{"params": ["int"], "returns": "void"}],
+        "temp_dir": [{"params": [], "returns": "string"}],
+        "write": [{"params": ["string", "string"], "returns": "void"}]
+      }
+    },
+    "Key": {
+      "methods": {
+        "bits": [{"params": [], "returns": "int"}],
+        "comment": [{"params": [], "returns": "string"}],
+        "fingerprint": [{"params": [], "returns": "string"}],
+        "path": [{"params": [], "returns": "string"}],
+        "public": [{"params": [], "returns": "string"}],
+        "public_with": [{"params": ["string"], "returns": "string"}],
+        "type": [{"params": [], "returns": "string"}]
+      }
+    },
+    "Keys": {
+      "methods": {
+        "bits": [{"params": ["int"], "returns": "Keys"}],
+        "certify": [{"params": ["string", "string", "string", "string", "string"], "returns": "string"}],
+        "change_passphrase": [{"params": ["string", "string", "string"], "returns": "void"}],
+        "fingerprint": [{"params": ["string"], "returns": "string"}],
+        "generate": [{"params": ["string", "string"], "returns": "Key"}, {"params": ["string", "string", "string", "string"], "returns": "Key"}],
+        "known_hosts_find": [{"params": ["string", "string"], "returns": "string"}],
+        "known_hosts_hash": [{"params": ["string"], "returns": "void"}],
+        "known_hosts_remove": [{"params": ["string", "string"], "returns": "void"}],
+        "load": [{"params": ["string"], "returns": "Key"}],
+        "set_comment": [{"params": ["string", "string", "string"], "returns": "void"}],
+        "sign": [{"params": ["string", "string", "string"], "returns": "string"}],
+        "verify": [{"params": ["string", "string", "string", "string", "string"], "returns": "bool"}]
+      }
+    },
+    "Report": {
+      "methods": {
+        "add": [{"params": ["string", "string", "int", "string"], "returns": "void"}],
+        "count": [{"params": [], "returns": "int"}],
+        "fail_if_any": [{"params": [], "returns": "void"}],
+        "print": [{"params": [], "returns": "void"}],
+        "text": [{"params": [], "returns": "string"}],
+        "write_json": [{"params": ["string"], "returns": "void"}],
+        "write_text": [{"params": ["string"], "returns": "void"}]
+      }
+    },
+    "Result": {
+      "methods": {
+        "dest": [{"params": [], "returns": "string"}],
+        "ok": [{"params": [], "returns": "bool"}],
+        "require": [{"params": [], "returns": "Result"}],
+        "status": [{"params": [], "returns": "int"}],
+        "stderr": [{"params": [], "returns": "string"}],
+        "stdout": [{"params": [], "returns": "string"}],
+        "timed_out": [{"params": [], "returns": "bool"}]
+      }
+    },
+    "ResultList": {
+      "methods": {
+        "at": [{"params": ["int"], "returns": "Result"}],
+        "failed": [{"params": [], "returns": "int"}],
+        "len": [{"params": [], "returns": "int"}],
+        "require_all": [{"params": [], "returns": "ResultList"}]
+      }
+    },
+    "Session": {
+      "methods": {
+        "cat": [{"params": ["string"], "returns": "string"}],
+        "close": [{"params": [], "returns": "void"}],
+        "config": [{"params": ["string"], "returns": "Session"}],
+        "connect_timeout": [{"params": ["int"], "returns": "Session"}],
+        "dest": [{"params": [], "returns": "string"}],
+        "exec": [{"params": ["string"], "returns": "Result"}, {"params": ["string", "string"], "returns": "Result"}],
+        "exists": [{"params": ["string"], "returns": "bool"}],
+        "get": [{"params": ["string", "string"], "returns": "void"}],
+        "get_dir": [{"params": ["string", "string"], "returns": "void"}],
+        "identity": [{"params": ["string"], "returns": "Session"}],
+        "jump": [{"params": ["string"], "returns": "Session"}],
+        "known_hosts": [{"params": ["string"], "returns": "Session"}],
+        "ls": [{"params": ["string"], "returns": "StrList"}],
+        "mkdir": [{"params": ["string"], "returns": "void"}],
+        "ok": [{"params": ["string"], "returns": "bool"}],
+        "option": [{"params": ["string"], "returns": "Session"}],
+        "output": [{"params": ["string"], "returns": "string"}],
+        "parallel": [{"params": ["int"], "returns": "Session"}],
+        "password": [{"params": ["string"], "returns": "Session"}],
+        "port": [{"params": ["int"], "returns": "Session"}],
+        "put": [{"params": ["string", "string"], "returns": "void"}],
+        "put_dir": [{"params": ["string", "string"], "returns": "void"}],
+        "rename": [{"params": ["string", "string"], "returns": "void"}],
+        "reuse": [{"params": ["bool"], "returns": "Session"}],
+        "rm": [{"params": ["string"], "returns": "void"}],
+        "rmdir": [{"params": ["string"], "returns": "void"}],
+        "sftp": [{"params": ["string"], "returns": "Result"}],
+        "strict_host_key": [{"params": ["string"], "returns": "Session"}],
+        "timeout": [{"params": ["int"], "returns": "Session"}],
+        "user": [{"params": ["string"], "returns": "Session"}],
+        "write": [{"params": ["string", "string"], "returns": "void"}]
+      }
+    },
+    "Ssh": {
+      "methods": {
+        "config": [{"params": ["string"], "returns": "Ssh"}],
+        "connect": [{"params": ["string"], "returns": "Session"}],
+        "connect_timeout": [{"params": ["int"], "returns": "Ssh"}],
+        "each": [{"params": ["StrList", "string"], "returns": "ResultList"}],
+        "identity": [{"params": ["string"], "returns": "Ssh"}],
+        "jump": [{"params": ["string"], "returns": "Ssh"}],
+        "known_hosts": [{"params": ["string"], "returns": "Ssh"}],
+        "option": [{"params": ["string"], "returns": "Ssh"}],
+        "parallel": [{"params": ["int"], "returns": "Ssh"}],
+        "password": [{"params": ["string"], "returns": "Ssh"}],
+        "port": [{"params": ["int"], "returns": "Ssh"}],
+        "reuse": [{"params": ["bool"], "returns": "Ssh"}],
+        "shutdown": [{"params": [], "returns": "void"}],
+        "strict_host_key": [{"params": ["string"], "returns": "Ssh"}],
+        "timeout": [{"params": ["int"], "returns": "Ssh"}],
+        "user": [{"params": ["string"], "returns": "Ssh"}]
+      }
+    },
+    "StrList": {
+      "methods": {
+        "add": [{"params": ["string"], "returns": "StrList"}],
+        "at": [{"params": ["int"], "returns": "string"}],
+        "clear": [{"params": [], "returns": "StrList"}],
+        "contains": [{"params": ["string"], "returns": "bool"}],
+        "index_of": [{"params": ["string"], "returns": "int"}],
+        "join": [{"params": ["string"], "returns": "string"}],
+        "len": [{"params": [], "returns": "int"}],
+        "set": [{"params": ["int", "string"], "returns": "StrList"}]
+      }
+    },
+    "StrMap": {
+      "methods": {
+        "clear": [{"params": [], "returns": "StrMap"}],
+        "get": [{"params": ["string"], "returns": "string"}],
+        "get_or": [{"params": ["string", "string"], "returns": "string"}],
+        "has": [{"params": ["string"], "returns": "bool"}],
+        "key_at": [{"params": ["int"], "returns": "string"}],
+        "len": [{"params": [], "returns": "int"}],
+        "remove": [{"params": ["string"], "returns": "bool"}],
+        "set": [{"params": ["string", "string"], "returns": "StrMap"}]
+      }
+    }
+  },
+  "functions": {
+    "float_list": [{"params": [], "returns": "FloatList"}],
+    "int_list": [{"params": [], "returns": "IntList"}],
+    "str_contains": [{"params": ["string", "string"], "returns": "bool"}],
+    "str_ends_with": [{"params": ["string", "string"], "returns": "bool"}],
+    "str_find": [{"params": ["string", "string"], "returns": "int"}],
+    "str_is_float": [{"params": ["string"], "returns": "bool"}],
+    "str_is_int": [{"params": ["string"], "returns": "bool"}],
+    "str_len": [{"params": ["string"], "returns": "int"}],
+    "str_list": [{"params": [], "returns": "StrList"}],
+    "str_lower": [{"params": ["string"], "returns": "string"}],
+    "str_map": [{"params": [], "returns": "StrMap"}],
+    "str_match": [{"params": ["string", "string"], "returns": "bool"}],
+    "str_repeat": [{"params": ["string", "int"], "returns": "string"}],
+    "str_replace": [{"params": ["string", "string", "string"], "returns": "string"}],
+    "str_split": [{"params": ["string", "string"], "returns": "StrList"}],
+    "str_starts_with": [{"params": ["string", "string"], "returns": "bool"}],
+    "str_substr": [{"params": ["string", "int", "int"], "returns": "string"}],
+    "str_to_float": [{"params": ["string"], "returns": "float"}],
+    "str_to_int": [{"params": ["string"], "returns": "int"}],
+    "str_trim": [{"params": ["string"], "returns": "string"}],
+    "str_upper": [{"params": ["string"], "returns": "string"}]
+  },
+  "context": {
+    "io": "Io",
+    "keys": "Keys",
+    "report": "Report",
+    "ssh": "Ssh"
+  }
+}
