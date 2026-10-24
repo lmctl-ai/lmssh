@@ -1,5 +1,6 @@
 #pragma once
 #include "dslvm.hpp"
+#include "stdlib/collections.hpp"
 #include "runner.hpp"
 #include <deque>
 #include <functional>
@@ -23,7 +24,7 @@ struct Options {
 struct Session { std::string dest; Options opts; };
 struct Result { std::string dest, command; Outcome outcome; };
 struct ResultList { std::vector<Result *> items; };
-struct StrList { std::vector<std::string> items; };
+using StrList = dslvm::stdlib::StrList;
 struct Key { std::string path; };
 struct Finding { std::string kind, file, message; int64_t line; };
 struct Report { std::vector<Finding> findings; };
@@ -36,7 +37,7 @@ struct Host {
   std::deque<Session> sessions;
   std::deque<Result> results;
   std::deque<ResultList> result_lists;
-  std::deque<StrList> str_lists;
+  dslvm::stdlib::Collections collections;
   std::deque<Key> keys;
   std::string work_dir;        // private 0700 directory under /tmp: scratch files and control sockets
   pid_t owner = 0;

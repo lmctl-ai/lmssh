@@ -129,6 +129,7 @@ int main(int argc, char **argv) {
   }
   for (const auto &program : programs) {
     try {
+      host.collections.reset();
       program.run(context, reg);
     } catch (const dslvm::Error &error) {
       host.shutdown();

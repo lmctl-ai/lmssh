@@ -23,9 +23,7 @@ contains(){ case "$1" in *"$2"*) return 0;; *) return 1;; esac; }
 expect_contains(){ contains "$1" "$2" || fail "$3: expected '$2' in: $1"; }
 
 scripts/sync-sdk.sh --verify >/dev/null || fail "SDK header pin mismatch"
-ok "SDK header matches sdk.lock"
-scripts/verify-string-catalog.sh || fail "string catalog pin"
-ok "string catalog matches string-catalog.lock"
+ok "VM and catalog headers match sdk.lock"
 if [ -z "${SKIP_BUILD:-}" ]; then
   scripts/sync-openssh.sh --verify >/dev/null 2>&1 || scripts/sync-openssh.sh >/dev/null
 fi

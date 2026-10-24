@@ -150,9 +150,7 @@ Value hold_result(Host &h, Result r) {
 }
 
 Value hold_strs(Host &h, std::vector<std::string> v) {
-  if (h.str_lists.size() >= 65536) throw dslvm::Error("StrList object limit exceeded (65536)");
-  h.str_lists.push_back(StrList{std::move(v)});
-  return Value::object("StrList", &h.str_lists.back());
+  return Value::object("StrList", h.collections.make_str_list(std::move(v)));
 }
 
 // ---- sessions ------------------------------------------------------------------------------------
@@ -393,6 +391,7 @@ void register_host(dslvm::Registry &r, Host &h) {
   r.context("io", "Io");
   r.context("report", "Report");
   dslvm::stdlib::register_string(r);
+  dslvm::stdlib::register_collections(r, h.collections);
 
   auto defaults_of = [](void *p) -> Options & { return *self<Options>(p); };
   auto session_of = [](void *p) -> Options & { return self<Session>(p)->opts; };
@@ -572,41 +571,6 @@ void register_host(dslvm::Registry &r, Host &h) {
       if (!succeeded(res->outcome)) { msg += (n++ ? "; " : "") + describe(*res); }
     if (n) throw dslvm::Error(std::to_string(n) + " failed: " + msg);
     return Value::object("ResultList", p);
-  });
-
-  // ---- StrList ----
-  method(r, "StrList", "len", {}, "int", [](void *p, Args &) { return Value::integer(static_cast<int64_t>(self<StrList>(p)->items.size())); });
-  method(r, "StrList", "at", {"int"}, "string", [](void *p, Args &a) {
-    auto *l = self<StrList>(p);
-    if (a[0].i < 0 || static_cast<size_t>(a[0].i) >= l->items.size()) throw dslvm::Error("StrList.at: index out of range: " + std::to_string(a[0].i));
-    return Value::string(l->items[static_cast<size_t>(a[0].i)]);
-  });
-  method(r, "StrList", "add", {"string"}, "StrList", [](void *p, Args &a) {
-    self<StrList>(p)->items.push_back(a[0].s);
-    return Value::object("StrList", p);
-  });
-  method(r, "StrList", "join", {"string"}, "string", [](void *p, Args &a) {
-    std::string out;
-    bool first = true;
-    for (const auto &s : self<StrList>(p)->items) { if (!first) out += a[0].s; out += s; first = false; }
-    return Value::string(out);
-  });
-  method(r, "StrList", "contains", {"string"}, "bool", [](void *p, Args &a) {
-    auto &v = self<StrList>(p)->items;
-    return Value::boolean(std::find(v.begin(), v.end(), a[0].s) != v.end());
-  });
-  function(r, "str_list", {}, "StrList", [&h](Args &) { return hold_strs(h, {}); });
-  function(r, "str_split", {"string", "string"}, "StrList", [&h](Args &a) {
-    if (a[1].s.empty()) throw dslvm::Error("str_split: separator must not be empty");
-    std::vector<std::string> parts;
-    size_t pos = 0;
-    for (;;) {
-      size_t e = a[0].s.find(a[1].s, pos);
-      if (e == std::string::npos) { parts.push_back(a[0].s.substr(pos)); break; }
-      parts.push_back(a[0].s.substr(pos, e - pos));
-      pos = e + a[1].s.size();
-    }
-    return hold_strs(h, std::move(parts));
   });
 
   // ---- Keys ----
