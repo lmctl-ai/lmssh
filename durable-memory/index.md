@@ -1,11 +1,52 @@
 # lmssh durable memory
 
-Design, build and operating notes for the lmssh host (OpenSSH client programs + lmcode-cpp, scripted by lmscript `_dsl_` bytecode). Read in numeric order.
+`lmssh` is a static, dependency-free lmscript `_dsl_` host embedding OpenSSH client programs (ssh, scp, sftp) and `lmcode-cpp` for programmatic remote automation, secure copy, and multiplexed sessions.
+Repository: https://github.com/lmctl-ai/lmssh.
 
-- `01-purpose-and-place.md` — what lmssh is and is not; relation to OpenSSH, lmcode-cpp, lmscript, lmhtml/lmcad; scope boundary.
-- `02-architecture.md` — one image, four programs: renamed `main()`s, symbol collisions, the fork runner, argv dispatch, why sftp/scp/ProxyJump re-enter the same executable.
-- `03-building-openssh.md` — the pinned source, `scripts/build-openssh.sh` step by step, configure flags, static linking (musl vs glibc vs macOS), how to bump the OpenSSH pin.
-- `04-api.md` — the DSL surface: contexts, types, every method, error and exit-code behaviour, option inheritance, worked patterns.
-- `05-testing.md` — `test.sh` layout, the throw-away sshd, what each check protects, pitfalls hit while writing it.
-- `06-ci-release.md` — GitHub Actions matrix, artifacts, release flow, versioning rule.
-- `07-open-items.md` — known limits and ideas not done (Windows, libedit, agent, FIDO, in-process mode, ...).
+## 60-second takeover
+
+```sh
+scripts/sync-deps.sh                  # Download and prepare OpenSSH source tree
+scripts/build-openssh.sh              # Build static OpenSSH client libraries
+cmake -S . -B build                   # Configure CMake build
+cmake --build build --parallel 4      # Build binary at build/lmssh
+./test.sh                             # Run full test suite with throw-away sshd
+```
+
+## Document map
+
+| File | Contents |
+| --- | --- |
+| [01-purpose-and-place.md](01-purpose-and-place.md) | Scope, OpenSSH client integration, and script execution boundary |
+| [02-architecture.md](02-architecture.md) | Single binary image containing ssh, scp, and sftp dispatch |
+| [03-building-openssh.md](03-building-openssh.md) | Building OpenSSH static archives, musl vs glibc, build flags |
+| [04-api.md](04-api.md) | DSL surface, session context, commands, and error handling |
+| [05-testing.md](05-testing.md) | Integration test suite, throw-away sshd daemon, and security tests |
+| [06-ci-release.md](06-ci-release.md) | GitHub Actions matrix, platform targets, and release procedure |
+| [07-open-items.md](07-open-items.md) | Backlog, Windows port ideas, agent forwarding, FIDO support |
+| [07-sdk-catalog.md](07-sdk-catalog.md) | Shared SDK catalogs, collection arena, and std schema merge rules |
+
+## SDK pin and sync
+
+The vendored SDK headers and standard catalogs are pinned in `sdk.lock` pointing to `https://github.com/lmctl-ai/lmcode-cpp`:
+```sh
+scripts/sync-sdk.sh                   # Refetches pinned headers and verifies sha256
+```
+
+## Adding an example or function
+
+### Adding an example
+1. Create `examples/<name>.lms` using `_dsl_ cli="lmssh" install="github:lmctl-ai/lmssh@latest"`.
+2. Run script: `build/lmssh run examples/<name>.lms` or via `lmscript`.
+3. Add the example to `./test.sh` test run list.
+4. Add terminal output image to `docs/images/<name>.png` and update `README.md` demo table with `lmctl autorun` command.
+
+### Adding a host function
+1. Declare function/method in `schema/lmssh.host.json`.
+2. Re-merge schema with `python3 scripts/merge-std.py` to generate `schema/lmssh.dsl.json`.
+3. Register and implement the function in C++ source under `src/` using `dslvm::Registry`.
+4. Rebuild and verify schema synchronization with `cmake --build build` and `./test.sh`.
+
+## Releases
+
+Releases are triggered automatically on push across Linux and macOS platforms. Platform binaries are published with `SHA256SUMS`, `LICENSE`, and `THIRD_PARTY_NOTICES`.
