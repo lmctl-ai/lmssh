@@ -1,0 +1,17 @@
+$ lmssh --version && lmssh ssh -V && lmssh --dsl-schema | head -n 14
+lmssh 0.1.0
+OpenSSH_10.6p1, OpenSSL 3.0.2 15 Mar 2022
+context io: Io
+context keys: Keys
+context report: Report
+context ssh: Ssh
+fn float_list() -> FloatList
+fn int_list() -> IntList
+fn str_contains(string, string) -> bool
+fn str_ends_with(string, string) -> bool
+fn str_find(string, string) -> int
+fn str_is_float(string) -> bool
+fn str_is_int(string) -> bool
+fn str_len(string) -> int
+fn str_list() -> StrList
+fn str_lower(string) -> string

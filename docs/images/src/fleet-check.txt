@@ -1,0 +1,7 @@
+$ lmssh --dsl build/fleet-check.dslb -- hosts.txt "uptime -p"
+web-01.prod: up 42 days, 3 hours, 12 minutes
+web-02.prod: up 42 days, 3 hours, 14 minutes
+web-03.prod: up 18 days, 9 hours, 45 minutes
+db-01.prod: up 112 days, 1 hour, 2 minutes
+4 ok, 0 failed
+{"ok": true, "result": null}

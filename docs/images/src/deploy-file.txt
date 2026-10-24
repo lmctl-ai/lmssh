@@ -1,0 +1,3 @@
+$ lmssh --dsl build/deploy-file.dslb -- web-01.prod dist/release-v2.1.tar.gz /opt/app/release.tar.gz
+deployed dist/release-v2.1.tar.gz -> web-01.prod:/opt/app/release.tar.gz sha256 6d1b8117ea84bb2350622f76b026564685eed9329eefdae22eb5a7ba06935b84
+{"ok": true, "result": null}
