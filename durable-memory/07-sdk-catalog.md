@@ -5,3 +5,9 @@
 The host registers the SDK string and collections catalogs. `lmssh::StrList` aliases `dslvm::stdlib::StrList`; native list results from `Session.ls`, `Io.args` and `Io.lines` are allocated through `Host::collections.make_str_list`. `Ssh.each` consumes the same type. Existing list methods, byte splitting, empty fields, errors and chaining are preserved. The schema includes the SDK's superset (`set`, `index_of`, `clear`, numeric lists and insertion-ordered maps), generated from the registry like the domain API.
 
 The collection arena owns stable-address objects for a chunk run and is reset before each chunk. The shared limit is 65,536 live collection objects across all four SDK collection types. Domain objects such as sessions and ResultList retain their separate host-owned storage and lifecycle.
+
+## Built-in std transition
+
+Registry construction installs the complete standard by default. The host has no std registration calls or collection arena member. Native SSH/io list producers allocate through the registry-owned run arena, which Program::run resets on entry and exit. Domain ResultList/session ownership remains separate.
+
+Only schema/lmssh.host.json is a checked-in declaration source. CMake merges its host entries with the byte-pinned cpp/std/lmcode-std.schema.json through scripts/merge-std.py, producing the ignored schema/lmssh.dsl.json used by existing examples and embedded CLI discovery. The merged bytes are still the compiler/load hash input until implicit injection exists. Schema checks compare both this effective surface and normalized host-only declarations, so built-ins do not count as omissions. SDK synchronization pins the standard JSON and merge helper as well as every header.

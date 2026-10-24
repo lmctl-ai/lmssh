@@ -4,7 +4,8 @@
 usage: gen-schema.py LMSSH_BINARY > schema/lmssh.dsl.json
 The checked-in schema is verified against the compiler's own signature listing by test.sh.
 """
-import json, re, subprocess, sys
+import json, re, subprocess, sys, importlib.util
+from pathlib import Path
 
 lines = subprocess.run([sys.argv[1], "--dsl-signatures"], check=True, capture_output=True, text=True).stdout.splitlines()
 types, functions, context = {}, {}, {}
@@ -37,4 +38,9 @@ def dump(value, indent=2, level=0):
 
 schema = {"dsl.schema": 2, "name": "lmssh", "types": dict(sorted(types.items())),
           "functions": dict(sorted(functions.items())), "context": dict(sorted(context.items()))}
-print(dump(schema))
+root = Path(__file__).resolve().parent.parent
+spec = importlib.util.spec_from_file_location("std_merge", root / "scripts/merge-std.py")
+sys.dont_write_bytecode = True
+bridge = importlib.util.module_from_spec(spec); spec.loader.exec_module(bridge)
+standard = json.loads((root / "cpp/std/lmcode-std.schema.json").read_text())
+sys.stdout.buffer.write((json.dumps(bridge.remove_standard(schema, standard), indent=2) + "\n").encode("utf-8"))

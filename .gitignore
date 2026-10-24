@@ -3,3 +3,6 @@ third_party/
 *.dslb
 lmssh.lmctl
 p1.txt
+
+# Compiler bridge artifact generated from host-only schema + pinned built-ins.
+/schema/lmssh.dsl.json

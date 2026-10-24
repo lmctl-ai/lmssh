@@ -149,8 +149,8 @@ Value hold_result(Host &h, Result r) {
   return Value::object("Result", &h.results.back());
 }
 
-Value hold_strs(Host &h, std::vector<std::string> v) {
-  return Value::object("StrList", h.collections.make_str_list(std::move(v)));
+Value hold_strs(dslvm::Registry &registry, std::vector<std::string> v) {
+  return Value::object("StrList", registry.std_collections().make_str_list(std::move(v)));
 }
 
 // ---- sessions ------------------------------------------------------------------------------------
@@ -390,8 +390,6 @@ void register_host(dslvm::Registry &r, Host &h) {
   r.context("keys", "Keys");
   r.context("io", "Io");
   r.context("report", "Report");
-  dslvm::stdlib::register_string(r);
-  dslvm::stdlib::register_collections(r, h.collections);
 
   auto defaults_of = [](void *p) -> Options & { return *self<Options>(p); };
   auto session_of = [](void *p) -> Options & { return self<Session>(p)->opts; };
@@ -506,7 +504,7 @@ void register_host(dslvm::Registry &r, Host &h) {
     require_ok(res);
     return res;
   };
-  method(r, "Session", "ls", {"string"}, "StrList", [&h, sftp_ok](void *p, Args &a) {
+  method(r, "Session", "ls", {"string"}, "StrList", [&h, &r, sftp_ok](void *p, Args &a) {
     Result res = sftp_ok(self<Session>(p), "ls -1 " + sftp_quote(a[0].s) + "\n");
     std::vector<std::string> names;
     for (const auto &line : split_lines(res.outcome.out)) {
@@ -514,7 +512,7 @@ void register_host(dslvm::Registry &r, Host &h) {
       auto slash = line.find_last_of('/');
       names.push_back(slash == std::string::npos ? line : line.substr(slash + 1));
     }
-    return hold_strs(h, std::move(names));
+    return hold_strs(r, std::move(names));
   });
   method(r, "Session", "exists", {"string"}, "bool", [&h](void *p, Args &a) {
     auto *s = self<Session>(p);
@@ -654,7 +652,7 @@ void register_host(dslvm::Registry &r, Host &h) {
   method(r, "Io", "print", {"string"}, "void", [](void *, Args &a) { std::cout << a[0].s << "\n"; return Value::none(); });
   method(r, "Io", "eprint", {"string"}, "void", [](void *, Args &a) { std::cerr << a[0].s << "\n"; return Value::none(); });
   method(r, "Io", "read", {"string"}, "string", [](void *, Args &a) { return Value::string(read_whole(a[0].s)); });
-  method(r, "Io", "lines", {"string"}, "StrList", [&h](void *, Args &a) { return hold_strs(h, split_lines(read_whole(a[0].s))); });
+  method(r, "Io", "lines", {"string"}, "StrList", [&r](void *, Args &a) { return hold_strs(r, split_lines(read_whole(a[0].s))); });
   method(r, "Io", "write", {"string", "string"}, "void", [](void *, Args &a) { write_whole(a[0].s, a[1].s); return Value::none(); });
   method(r, "Io", "append", {"string", "string"}, "void", [](void *, Args &a) { write_whole(a[0].s, a[1].s, true); return Value::none(); });
   method(r, "Io", "exists", {"string"}, "bool", [](void *, Args &a) {
@@ -679,7 +677,7 @@ void register_host(dslvm::Registry &r, Host &h) {
     const char *v = getenv(a[0].s.c_str());
     return Value::string(v ? v : "");
   });
-  method(r, "Io", "args", {}, "StrList", [&h](void *, Args &) { return hold_strs(h, h.script_args); });
+  method(r, "Io", "args", {}, "StrList", [&h, &r](void *, Args &) { return hold_strs(r, h.script_args); });
   method(r, "Io", "temp_dir", {}, "string", [&h](void *, Args &) { return Value::string(h.work()); });
   method(r, "Io", "sleep_ms", {"int"}, "void", [](void *, Args &a) {
     if (!dry_run() && a[0].i > 0) usleep(static_cast<useconds_t>(std::min<int64_t>(a[0].i, 3600000)) * 1000);

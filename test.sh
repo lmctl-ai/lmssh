@@ -54,7 +54,10 @@ ok "--dsl-schema --json is byte-identical to schema/lmssh.dsl.json"
 "$LMSCRIPT" --dsl-signatures schema/lmssh.dsl.json > "$WORK/compiler.sig"
 diff "$WORK/host.sig" "$WORK/compiler.sig" >/dev/null || fail "registry signatures differ from the compiler's reading of the schema"
 ok "registry signatures match the compiler ($(wc -l < "$WORK/host.sig" | tr -d ' ') signatures)"
-python3 scripts/gen-schema.py "$HOST" | cmp - schema/lmssh.dsl.json || fail "schema/lmssh.dsl.json is stale: scripts/gen-schema.py"
+python3 scripts/merge-std.py --normalize-signatures schema/lmssh.host.json "$WORK/host-only.sig"
+diff "$WORK/host.sig" "$WORK/host-only.sig" >/dev/null || fail "host-only schema differs from registry after std normalization"
+ok "host-only schema self-check accepts SDK built-ins"
+python3 scripts/gen-schema.py "$HOST" | cmp - schema/lmssh.host.json || fail "schema/lmssh.host.json is stale: scripts/gen-schema.py"
 ok "schema/lmssh.dsl.json regenerates identically from the registry"
 case "$(uname -s)" in
   Linux)

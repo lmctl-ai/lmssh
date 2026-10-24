@@ -37,7 +37,6 @@ struct Host {
   std::deque<Session> sessions;
   std::deque<Result> results;
   std::deque<ResultList> result_lists;
-  dslvm::stdlib::Collections collections;
   std::deque<Key> keys;
   std::string work_dir;        // private 0700 directory under /tmp: scratch files and control sockets
   pid_t owner = 0;
