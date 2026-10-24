@@ -45,7 +45,7 @@ The API covers sessions (`exec`, `output`, `put`, `get`, `put_dir`, `get_dir`, `
 
 ## How it works
 
-The four OpenSSH client programs are compiled from a pinned `openssh-portable` tag with each `main()` renamed, and linked into one image together with OpenSSL's libcrypto, zlib and the [cpp-dsl-sdk](https://github.com/lmctl-ai/cpp-dsl-sdk) bytecode VM. A script step such as `session.exec(...)` forks a child, runs the real `ssh` code in it, and collects stdout, stderr and the exit status through pipes — so OpenSSH keeps its own behaviour (`exit()` calls, global state, `ssh_config`, `known_hosts`, multiplexing) and the script only sees results. Details: [durable-memory/](durable-memory/index.md).
+The four OpenSSH client programs are compiled from a pinned `openssh-portable` tag with each `main()` renamed, and linked into one image together with OpenSSL's libcrypto, zlib and the [lmcode-cpp](https://github.com/lmctl-ai/lmcode-cpp) bytecode VM. A script step such as `session.exec(...)` forks a child, runs the real `ssh` code in it, and collects stdout, stderr and the exit status through pipes — so OpenSSH keeps its own behaviour (`exit()` calls, global state, `ssh_config`, `known_hosts`, multiplexing) and the script only sees results. Details: [durable-memory/](durable-memory/index.md).
 
 ## Install
 

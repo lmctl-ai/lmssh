@@ -2,7 +2,7 @@ Third-party notices for lmssh
 =============================
 
 lmssh's own code (including the vendored `cpp/dslvm.hpp` runtime and
-`cpp/stdlib/string.hpp` catalog from the cpp-dsl-sdk project) is Copyright (c)
+`cpp/stdlib/string.hpp` catalog from the lmcode-cpp project) is Copyright (c)
 2026 Lattice Systems LLC, MIT license (see LICENSE). This file covers the
 third-party components linked into the distributed binaries.
 

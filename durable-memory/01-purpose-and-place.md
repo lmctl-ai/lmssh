@@ -1,6 +1,6 @@
 # Purpose and place
 
-lmssh is a single, statically linked executable for **automating SSH**. It contains OpenSSH's client programs — `ssh`, `sftp`, `scp`, `ssh-keygen` — and a bytecode VM ([cpp-dsl-sdk](https://github.com/lmctl-ai/cpp-dsl-sdk) `dslvm.hpp`) that runs lmscript `_dsl_` programs against a schema describing what the host offers. It follows the same pattern as the sibling hosts `../lmhtml` (HTML, lexbor) and `../lmcad`: the host owns the process and the objects, the script only calls what the registry offers.
+lmssh is a single, statically linked executable for **automating SSH**. It contains OpenSSH's client programs — `ssh`, `sftp`, `scp`, `ssh-keygen` — and a bytecode VM ([lmcode-cpp](https://github.com/lmctl-ai/lmcode-cpp) `dslvm.hpp`) that runs lmscript `_dsl_` programs against a schema describing what the host offers. It follows the same pattern as the sibling hosts `../lmhtml` (HTML, lexbor) and `../lmcad`: the host owns the process and the objects, the script only calls what the registry offers.
 
 ## What it is for
 
