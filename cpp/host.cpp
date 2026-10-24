@@ -1,5 +1,6 @@
 #include "host.hpp"
 #include "stdlib/string.hpp"
+#include "stdlib/testing.hpp"
 #include <algorithm>
 #include <openssl/evp.h>
 #include <cerrno>
@@ -386,6 +387,7 @@ std::string report_text(const Report &report) {
 }  // namespace
 
 void register_host(dslvm::Registry &r, Host &h) {
+  dslvm::stdlib::register_testing(r);
   r.context("ssh", "Ssh");
   r.context("keys", "Keys");
   r.context("io", "Io");
