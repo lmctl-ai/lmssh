@@ -43,7 +43,7 @@ scripts/sync-sdk.sh                   # Refetches pinned headers and verifies sh
 
 ### Adding a host function
 1. Declare function/method in `schema/lmssh.host.json`.
-2. Re-merge schema with `python3 scripts/merge-std.py` to generate `schema/lmssh.dsl.json`.
+2. Reconfigure CMake to copy the exact host-only bytes into `schema/lmssh.dsl.json`; lmscript >=0.2.420 resolves std implicitly.
 3. Register and implement the function in C++ source under `src/` using `dslvm::Registry`.
 4. Rebuild and verify schema synchronization with `cmake --build build` and `./test.sh`.
 

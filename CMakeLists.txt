@@ -12,16 +12,9 @@ set(OPENSSL_DIR "/usr" CACHE PATH "Prefix with include/openssl and the static li
 # ---- DSL schema embedded into the executable (also what lmscript compiles against) ----
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 set(LMSSH_HOST_SCHEMA "${CMAKE_CURRENT_SOURCE_DIR}/schema/lmssh.host.json")
-set(LMSSH_STD_SCHEMA "${CMAKE_CURRENT_SOURCE_DIR}/cpp/std/lmcode-std.schema.json")
-set(LMSSH_STD_MERGER "${CMAKE_CURRENT_SOURCE_DIR}/scripts/merge-std.py")
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${LMSSH_HOST_SCHEMA}" "${LMSSH_STD_SCHEMA}" "${LMSSH_STD_MERGER}")
-execute_process(COMMAND "${Python3_EXECUTABLE}" "${LMSSH_STD_MERGER}" "${LMSSH_HOST_SCHEMA}"
-  "${CMAKE_CURRENT_SOURCE_DIR}/schema/lmssh.dsl.json" RESULT_VARIABLE LMSSH_STD_RESULT ERROR_VARIABLE LMSSH_STD_ERROR)
-if(NOT LMSSH_STD_RESULT EQUAL 0)
-  message(FATAL_ERROR "Cannot merge built-in std: ${LMSSH_STD_ERROR}")
-endif()
 set(LMSSH_SCHEMA "${CMAKE_CURRENT_SOURCE_DIR}/schema/lmssh.dsl.json")
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${LMSSH_SCHEMA}")
+# Keep the exact host bytes; standard declarations are compiler built-ins.
+configure_file("${LMSSH_HOST_SCHEMA}" "${LMSSH_SCHEMA}" COPYONLY)
 file(READ "${LMSSH_SCHEMA}" LMSSH_SCHEMA_HEX HEX)
 string(LENGTH "${LMSSH_SCHEMA_HEX}" LMSSH_SCHEMA_HEX_LENGTH)
 math(EXPR LMSSH_SCHEMA_LAST_BYTE "${LMSSH_SCHEMA_HEX_LENGTH} - 2")

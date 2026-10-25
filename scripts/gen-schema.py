@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Generate schema/lmssh.dsl.json from `lmssh --dsl-signatures` (the registry is the source of truth).
+"""Generate schema/lmssh.host.json from `lmssh --dsl-signatures` (the registry is the source of truth).
 
-usage: gen-schema.py LMSSH_BINARY > schema/lmssh.dsl.json
+usage: gen-schema.py LMSSH_BINARY > schema/lmssh.host.json
 The checked-in schema is verified against the compiler's own signature listing by test.sh.
 """
 import json, re, subprocess, sys, importlib.util

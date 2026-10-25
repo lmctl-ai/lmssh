@@ -54,9 +54,22 @@ ok "--dsl-schema --json is byte-identical to schema/lmssh.dsl.json"
 "$LMSCRIPT" --dsl-signatures schema/lmssh.dsl.json > "$WORK/compiler.sig"
 diff "$WORK/host.sig" "$WORK/compiler.sig" >/dev/null || fail "registry signatures differ from the compiler's reading of the schema"
 ok "registry signatures match the compiler ($(wc -l < "$WORK/host.sig" | tr -d ' ') signatures)"
-python3 scripts/merge-std.py --normalize-signatures schema/lmssh.host.json "$WORK/host-only.sig"
-diff "$WORK/host.sig" "$WORK/host-only.sig" >/dev/null || fail "host-only schema differs from registry after std normalization"
-ok "host-only schema self-check accepts SDK built-ins"
+cmp schema/lmssh.host.json schema/lmssh.dsl.json || fail "generated schema differs from host-only input"
+python3 scripts/merge-std.py --host-only schema/lmssh.dsl.json "$WORK/host-only-schema.json"
+cmp schema/lmssh.dsl.json "$WORK/host-only-schema.json" || fail "embedded schema still declares standard members"
+"$HOST" --dsl-signatures >"$WORK/registry-signatures.txt"
+"$LMSCRIPT" --dsl-signatures cpp/std/lmcode-std.schema.json >"$WORK/standard-signatures.txt"
+python3 - "$WORK" <<'PYHOST'
+from pathlib import Path
+import sys
+work=Path(sys.argv[1])
+registry=set((work/'registry-signatures.txt').read_text().splitlines())
+standard=set((work/'standard-signatures.txt').read_text().splitlines())
+assert len(standard)==72, len(standard)
+(work/'host-signatures.txt').write_bytes(''.join(line+'\n' for line in sorted(registry-standard)).encode('utf-8'))
+PYHOST
+diff -u <("$LMSCRIPT" --dsl-signatures schema/lmssh.dsl.json --without-std) "$WORK/host-signatures.txt" || fail "host-only registry/compiler signatures differ"
+ok "host-only schema bytes and --without-std parity retain domain and testing declarations"
 python3 scripts/gen-schema.py "$HOST" | cmp - schema/lmssh.host.json || fail "schema/lmssh.host.json is stale: scripts/gen-schema.py"
 ok "schema/lmssh.dsl.json regenerates identically from the registry"
 case "$(uname -s)" in
@@ -283,7 +296,11 @@ E2
   expect_contains "$OUT" "askpass=with-passphrase" "key passphrase through SSH_ASKPASS"
   expect_contains "$OUT" "wrong=false" "wrong passphrase fails"
   expect_contains "$OUT" "unknown host key refused=true" "unknown host keys are never auto-accepted"
-  ls -d /tmp/lmssh-* >/dev/null 2>&1 && fail "work directory leaked: $(ls -d /tmp/lmssh-*)" || true
+  # Session work directories use exactly six mkdtemp characters. Unrelated
+  # lmssh-*.log files are not leaked session directories.
+  for dir in /tmp/lmssh-??????; do
+    [ ! -d "$dir" ] || fail "work directory leaked: $dir"
+  done
   ok "port/identity/jump/reuse/timeout/passphrase options work; the private work directory is removed"
 
   rm -f "$R/dry.txt"
