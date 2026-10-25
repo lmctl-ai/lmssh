@@ -1,7 +1,7 @@
 # run-command
 # usage: lmssh --dsl run-command.dslb -- DEST COMMAND   (prints stdout; exit 4 if the command fails)
 out = ARGV.len() > 0 ? ARGV[0] : "build/run-command.dslb";
-p = _dsl_ schema="../schema/lmssh.dsl.json";
+p = _lmcode_ schema="../schema/lmssh.dsl.json";
 # Optional: LMSSH_SSH_CONFIG points at an ssh_config(5) file; otherwise ~/.ssh/config applies as usual.
 if (io.env("LMSSH_SSH_CONFIG") != "") { ssh.config(io.env("LMSSH_SSH_CONFIG")); }
 let args = io.args();
@@ -9,5 +9,5 @@ if (args.len() < 2) { io.fail("usage: lmssh --dsl run-command.dslb -- DEST COMMA
 let result = ssh.connect(args.at(0)).exec(args.at(1));
 io.print(str_trim(result.stdout()));
 if (!result.ok()) { io.fail(args.at(0) + ": exit " + str(result.status()) + ": " + str_trim(result.stderr())); }
-end _dsl_
+end _lmcode_
 savedsl(p, out);

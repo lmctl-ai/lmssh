@@ -2,7 +2,7 @@
 # usage: lmssh --dsl deploy-file.dslb -- DEST LOCAL_FILE REMOTE_PATH
 # Uploads next to the target, verifies the sha256 on the remote side, then renames into place (atomic on one filesystem).
 out = ARGV.len() > 0 ? ARGV[0] : "build/deploy-file.dslb";
-p = _dsl_ schema="../schema/lmssh.dsl.json";
+p = _lmcode_ schema="../schema/lmssh.dsl.json";
 # Optional: LMSSH_SSH_CONFIG points at an ssh_config(5) file; otherwise ~/.ssh/config applies as usual.
 if (io.env("LMSSH_SSH_CONFIG") != "") { ssh.config(io.env("LMSSH_SSH_CONFIG")); }
 let args = io.args();
@@ -18,5 +18,5 @@ if (!str_starts_with(remote, local)) {
 }
 s.rename(staged, args.at(2));
 io.print("deployed " + args.at(1) + " -> " + args.at(0) + ":" + args.at(2) + " sha256 " + local);
-end _dsl_
+end _lmcode_
 savedsl(p, out);

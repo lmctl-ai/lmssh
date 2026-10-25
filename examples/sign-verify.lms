@@ -2,7 +2,7 @@
 # usage: lmssh --dsl sign-verify.dslb      (no network; builds throw-away keys under a temp dir)
 # Signs a file with an ed25519 key (ssh-keygen -Y sign), verifies it, then shows that a tampered copy fails.
 out = ARGV.len() > 0 ? ARGV[0] : "build/sign-verify.dslb";
-p = _dsl_ schema="../schema/lmssh.dsl.json";
+p = _lmcode_ schema="../schema/lmssh.dsl.json";
 let dir = io.temp_dir();
 let key = keys.generate(dir + "/signer", "ed25519", "release@example.org", "");
 io.write(dir + "/artifact.txt", "release 1.0\n");
@@ -14,5 +14,5 @@ let bad = keys.verify(dir + "/allowed_signers", "release@example.org", "release"
 io.print("original verifies: " + str(good));
 io.print("tampered verifies: " + str(bad));
 if (!good || bad) { io.fail("signature check did not behave as expected"); }
-end _dsl_
+end _lmcode_
 savedsl(p, out);

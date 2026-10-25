@@ -2,7 +2,7 @@
 # usage: lmssh --dsl issue-cert.dslb -- OUT_DIR       (no network)
 # Creates a CA key and a user key, then issues a 4-week user certificate for principal "deploy".
 out = ARGV.len() > 0 ? ARGV[0] : "build/issue-cert.dslb";
-p = _dsl_ schema="../schema/lmssh.dsl.json";
+p = _lmcode_ schema="../schema/lmssh.dsl.json";
 let args = io.args();
 if (args.len() != 1) { io.fail("usage: lmssh --dsl issue-cert.dslb -- OUT_DIR"); }
 io.mkdir(args.at(0));
@@ -13,5 +13,5 @@ io.print("CA fingerprint:   " + ca.fingerprint());
 io.print("user fingerprint: " + user.fingerprint());
 io.print("certificate:      " + cert);
 io.print("sshd_config line: TrustedUserCAKeys <path to>/ca.pub");
-end _dsl_
+end _lmcode_
 savedsl(p, out);

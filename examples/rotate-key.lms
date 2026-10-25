@@ -3,7 +3,7 @@
 # AUTHORIZED_KEYS_PATH is on the remote side and defaults to ~/.ssh/authorized_keys.
 # Creates NEW_PRIVATE_KEY, installs its public half, proves the new key logs in, then removes the old key from authorized_keys.
 out = ARGV.len() > 0 ? ARGV[0] : "build/rotate-key.dslb";
-p = _dsl_ schema="../schema/lmssh.dsl.json";
+p = _lmcode_ schema="../schema/lmssh.dsl.json";
 # Optional: LMSSH_SSH_CONFIG points at an ssh_config(5) file; otherwise ~/.ssh/config applies as usual.
 if (io.env("LMSSH_SSH_CONFIG") != "") { ssh.config(io.env("LMSSH_SSH_CONFIG")); }
 let args = io.args();
@@ -22,5 +22,5 @@ if (str_trim(via_new.output("echo login-ok")) != "login-ok") { io.fail("the new 
 let material = str_split(old_pub, " ").at(1);
 via_new.exec("grep -vF -- \"$(cat)\" " + ak + " > " + ak + ".new && mv " + ak + ".new " + ak, material + "\n").require();
 io.print("rotated " + old_fp + " -> " + new_key.fingerprint());
-end _dsl_
+end _lmcode_
 savedsl(p, out);

@@ -32,7 +32,7 @@ Invoked through a symlink named `ssh`, `sftp`, `scp` or `ssh-keygen`, the execut
 
 ```
 # fleet-check.lms — run a command on every host in parallel and report who failed
-p = _dsl_ schema="schema/lmssh.dsl.json";
+p = _lmcode_ schema="schema/lmssh.dsl.json";
 let hosts = str_list().add("web1").add("web2").add("db1");
 ssh.parallel(16).timeout(60);
 let results = ssh.each(hosts, "systemctl is-active nginx");
@@ -42,7 +42,7 @@ for (i in range(0, results.len())) {
 }
 report.print();
 report.fail_if_any();
-end _dsl_
+end _lmcode_
 savedsl(p, "fleet-check.dslb");
 ```
 
