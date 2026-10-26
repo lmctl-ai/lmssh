@@ -21,12 +21,12 @@ Invoked through a symlink named `ssh`, `sftp`, `scp` or `ssh-keygen`, the execut
 | **Fleet execution** | **Atomic file deployment** | **Known hosts inventory** |
 | --- | --- | --- |
 | <img src="docs/images/fleet-check.png" width="290" alt="fleet-check"> | <img src="docs/images/deploy-file.png" width="290" alt="deploy-file"> | <img src="docs/images/known-hosts.png" width="290" alt="known-hosts"> |
-| Parallel command execution across a server fleet with aggregate reporting.<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmssh/main/examples/fleet-check.lms` | SFTP upload, sha256 checksum verification, and atomic file replacement.<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmssh/main/examples/deploy-file.lms` | Query known_hosts inventory and detect unverified endpoints.<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmssh/main/examples/known-hosts.lms` |
+| Parallel command execution across a server fleet with aggregate reporting.<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmssh/main/examples/fleet-check.lms` | SFTP upload, sha256 checksum verification, and atomic file replacement.<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmssh/main/examples/deploy-file.lms` | Query known_hosts inventory and detect unverified endpoints.<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmssh/main/examples/known-hosts.lms` |
 
 | **Key signing & verification** | **CA & certificate issuance** | **lmssh CLI & Schema** |
 | --- | --- | --- |
 | <img src="docs/images/sign-verify.png" width="290" alt="sign-verify"> | <img src="docs/images/issue-cert.png" width="290" alt="issue-cert"> | <img src="docs/images/lmssh-cli.png" width="290" alt="lmssh-cli"> |
-| Cryptographic file signing with SSH Ed25519 keys and tamper validation.<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmssh/main/examples/sign-verify.lms` | Generate Certificate Authority, user keys, and issue SSH certificates.<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmssh/main/examples/issue-cert.lms` | Embedded OpenSSH 10.6p1 suite and strongly typed DSL schema.<br>`lmssh --version && lmssh ssh -V` |
+| Cryptographic file signing with SSH Ed25519 keys and tamper validation.<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmssh/main/examples/sign-verify.lms` | Generate Certificate Authority, user keys, and issue SSH certificates.<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmssh/main/examples/issue-cert.lms` | Embedded OpenSSH 10.6p1 suite and strongly typed DSL schema.<br>`lmssh --version && lmssh ssh -V` |
 
 ## A script
 
