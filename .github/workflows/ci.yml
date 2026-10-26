@@ -9,13 +9,6 @@ on:
         default: "all"
         type: choice
         options: [all, linux-x64, linux-arm64, macos-arm64, macos-x64]
-  push:
-    branches: [main]
-    tags: ["v*"]
-    # docs-only pushes need no matrix (macOS bills 10x); path filters are not evaluated for tags
-    paths-ignore: ["durable-memory/**", "**.md"]
-  pull_request:
-    paths-ignore: ["durable-memory/**", "**.md"]
 
 # Least privilege: build jobs (which run third-party npm install scripts) only read;
 # the release job alone gets contents: write.
