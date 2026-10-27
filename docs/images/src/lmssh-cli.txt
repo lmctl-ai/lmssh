@@ -1,5 +1,5 @@
 $ lmssh --version && lmssh ssh -V && lmssh --dsl-schema | head -n 14
-lmssh 0.1.0
+lmssh 0.1.1
 OpenSSH_10.6p1, OpenSSL 3.0.2 15 Mar 2022
 context io: Io
 context keys: Keys
