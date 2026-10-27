@@ -16,6 +16,16 @@ lmssh ssh-keygen -t ed25519 -f ~/.ssh/id    # the real ssh-keygen
 
 Invoked through a symlink named `ssh`, `sftp`, `scp` or `ssh-keygen`, the executable behaves as that program. `sftp` and `scp` use the same executable as their `ssh` transport, and `ProxyJump` works the same way.
 
+## Install lmctl
+
+Everything in this repository runs through [lmctl](https://lmctl.com), the core tool of the lmctl family. Install it once, then run any `.lms` file or raw URL:
+
+```bash
+npm install -g @lmctl-ai/lmctl
+lmctl autorun path/to/example.lms
+lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmssh/main/examples/example.lms
+```
+
 ## Gallery
 
 | **Fleet execution** | **Atomic file deployment** | **Known hosts inventory** |
