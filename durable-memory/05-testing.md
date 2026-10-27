@@ -1,6 +1,6 @@
 # Testing
 
-`./test.sh` (builds first unless `SKIP_BUILD=1`; `BUILD_DIR=build-musl` points it at another build) runs 26 checks:
+`./test.sh` (builds first unless `SKIP_BUILD=1`; `BUILD_DIR=build-musl` points it at another build) runs 29 checks:
 
 1. **Pins** — `sdk.lock` (sha256 of `cpp/dslvm.hpp`), `string-catalog.lock`, `openssh.lock` (commit of `third_party/openssh-portable`).
 2. **Build and identity** — `--version` equals the CMake `project(VERSION)`; the embedded schema is byte-identical to `schema/lmssh.dsl.json`; the registry's signatures equal the compiler's reading of the schema (`lmscript --dsl-signatures`); the schema regenerates identically from the registry; the binary is fully static (`ldd`) on Linux or links only system libraries (`otool -L`) on macOS.

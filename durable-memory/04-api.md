@@ -47,6 +47,14 @@ Without `password(...)` every step runs with `BatchMode=yes`.
 | `close()` | `ssh -O exit` | stops this session's reuse master |
 | `dest()` | | the destination string |
 
+### Path and argument safety
+
+Every path, destination, user, jump host, and option string supplied by a script is validated before invoking OpenSSH:
+
+- Control characters (`NUL`, `\n`, `\r`) in paths, destinations, users, jump hosts, options, or key arguments are rejected immediately with a run error (`RUN_HOST`, exit 3), so a script-supplied path can never inject a second SFTP batch command or truncate a C string.
+- Option termination (`--`) is passed before destinations and path arguments in `ssh`, `sftp` batch commands (`ls -1 --`, `mkdir --`, `rm --`, `rmdir --`, `rename --`), `scp`, and `ssh-keygen`, and relative local `scp` paths starting with `-` or containing `:` before `/` are prefixed with `./` so they are never parsed as flags or `host:path`.
+- Glob and brace wildcards (`*`, `?`, `[`, `]`, `{`, `}`) are neutralized across both SFTP batch commands and `scp` SFTP transfers (`get`, `get_dir`, `cat`, `ls`, `exists`, `rm`), so script-supplied paths always refer to literal remote paths.
+
 `Ssh.each(StrList dests, string cmd)` runs `cmd` on every destination with the defaults, `parallel` at a time, and returns a `ResultList` in input order: `len()`, `at(i)`, `failed()` (count), `require_all()` (throws listing every failure). `Ssh.shutdown()` closes masters and removes the work directory early.
 
 `Result`: `ok()` (exit 0 and not timed out), `status()`, `stdout()`, `stderr()`, `dest()`, `timed_out()`, `require()` (throws with command, status and first stderr line, returns the Result).

@@ -45,6 +45,8 @@ std::vector<std::string> split_lines(const std::string &s) {
 }
 
 std::string read_whole(const std::string &path) {
+  if (path.empty() || path.find_first_of(std::string_view("\0\n\r", 3)) != std::string::npos)
+    throw dslvm::Error("local path must not be empty or contain control characters (NUL, LF, CR)");
   std::ifstream in(path, std::ios::binary);
   if (!in) throw dslvm::Error("cannot read " + path + ": " + strerror(errno));
   std::ostringstream buf;
@@ -53,11 +55,36 @@ std::string read_whole(const std::string &path) {
 }
 
 void write_whole(const std::string &path, const std::string &data, bool append = false) {
+  if (path.empty() || path.find_first_of(std::string_view("\0\n\r", 3)) != std::string::npos)
+    throw dslvm::Error("local path must not be empty or contain control characters (NUL, LF, CR)");
   if (dry_run()) { std::cerr << "[dry-run] write " << path << " (" << data.size() << " bytes)\n"; return; }
   std::ofstream out(path, std::ios::binary | (append ? std::ios::app : std::ios::trunc));
   if (!out) throw dslvm::Error("cannot write " + path + ": " + strerror(errno));
   out << data;
   if (!out) throw dslvm::Error("failed writing " + path);
+}
+
+void check_no_nul(const std::string &s, const char *what) {
+  if (s.find('\0') != std::string::npos) {
+    throw dslvm::Error(std::string(what) + " contains a NUL byte");
+  }
+}
+
+void check_no_ctl(const std::string &s, const char *what, bool allow_empty = false) {
+  if (!allow_empty && s.empty()) throw dslvm::Error(std::string(what) + " must not be empty");
+  for (unsigned char c : s) {
+    if (c == '\0' || c == '\n' || c == '\r') {
+      throw dslvm::Error(std::string(what) + " contains a control character (NUL, LF, or CR)");
+    }
+  }
+}
+
+void check_dest(const std::string &d, const char *where) {
+  check_no_ctl(d, where);
+  if (d[0] == '-') throw dslvm::Error(std::string(where) + ": invalid destination: " + d);
+  for (unsigned char c : d) {
+    if (std::isspace(c) || c == '/') throw dslvm::Error(std::string(where) + ": invalid destination: " + d);
+  }
 }
 
 // ---- argument assembly -------------------------------------------------------------------------
@@ -74,7 +101,10 @@ std::vector<std::string> common_args(Host &h, const Options &o, lmssh_tool tool)
   else a.insert(a.end(), {"-o", "BatchMode=no", "-o", "NumberOfPasswordPrompts=1"});
   if (o.connect_timeout > 0) a.insert(a.end(), {"-o", "ConnectTimeout=" + std::to_string(o.connect_timeout)});
   if (!o.strict_host_key.empty()) a.insert(a.end(), {"-o", "StrictHostKeyChecking=" + o.strict_host_key});
-  if (!o.known_hosts.empty()) a.insert(a.end(), {"-o", "UserKnownHostsFile=" + o.known_hosts});
+  if (!o.known_hosts.empty()) {
+    std::string kh = o.known_hosts.find_first_of(" \t") != std::string::npos ? "\"" + o.known_hosts + "\"" : o.known_hosts;
+    a.insert(a.end(), {"-o", "UserKnownHostsFile=" + kh});
+  }
   if (!o.identities.empty()) a.insert(a.end(), {"-o", "IdentitiesOnly=yes"});
   for (const auto &id : o.identities) { a.push_back("-i"); a.push_back(id); }
   if (!o.jump.empty()) { a.push_back("-J"); a.push_back(o.jump); }
@@ -111,13 +141,48 @@ std::string scp_host(const std::string &dest) {
   return user + host;
 }
 
-std::string sftp_quote(const std::string &path) {
+std::string sftp_quote(const std::string &path, bool escape_brace = false) {
+  check_no_ctl(path, "remote path");
+  // In OpenSSH sftp batch mode (sftp.c makeargv), inside double quotes:
+  // - '\"' unescapes to '"'
+  // - '\\' becomes '\\' in argv, which undo_glob_escape() (for non-globbed commands:
+  //   mkdir, rmdir, rename) and glob() (for globbed commands: rm, ls) both unescape to '\'
+  // - unescaped '?', '[', '*' inside double quotes are automatically prefixed with '\'
+  //   by makeargv() itself (whereas '\?', '\[', '\*' inside double quotes would be
+  //   double-escaped by makeargv() to '\\*', re-enabling globbing!)
+  // - for 'ls' (do_globbed_ls), sftp_glob is called with GLOB_BRACE and without
+  //   undo_glob_escape(), so '{' and '}' must be prefixed with '\' to prevent brace expansion.
   std::string q = "\"";
   for (char c : path) {
-    if (c == '"' || c == '\\') q += '\\';
+    if (c == '"' || c == '\\' || (escape_brace && (c == '{' || c == '}'))) q += '\\';
     q += c;
   }
   return q + "\"";
+}
+
+std::string scp_escape_glob(const std::string &path) {
+  check_no_ctl(path, "remote path");
+  // OpenSSH scp in SFTP mode calls sftp_glob(..., GLOB_NOCHECK|GLOB_MARK) in sink_sftp()
+  // when downloading (get, get_dir, cat), but does NOT glob in source_sftp() when uploading.
+  std::string out;
+  out.reserve(path.size());
+  for (char c : path) {
+    if (c == '[' || c == ']' || c == '?' || c == '*' || c == '\\') out += '\\';
+    out += c;
+  }
+  return out;
+}
+
+std::string local_scp_path(const std::string &path) {
+  check_no_ctl(path, "local path");
+  // Prevent scp parse_user_host_path / parse_scp_uri from interpreting a relative
+  // local path containing ':' before '/' (e.g. "foo:bar") as host:path, or leading '-'.
+  auto slash = path.find('/');
+  auto colon = path.find(':');
+  if (path[0] == '-' || (colon != std::string::npos && (slash == std::string::npos || colon < slash))) {
+    return "./" + path;
+  }
+  return path;
 }
 
 std::string describe(const Result &r) {
@@ -157,13 +222,15 @@ Value hold_strs(dslvm::Registry &registry, std::vector<std::string> v) {
 // ---- sessions ------------------------------------------------------------------------------------
 
 Result exec_on(Host &h, const std::string &dest, const Options &o, const std::string &cmd, const std::string &input) {
-  Spec s = make_spec(h, o, LMSSH_SSH, {with_user(dest, o), cmd});
+  check_no_nul(cmd, "remote command");
+  Spec s = make_spec(h, o, LMSSH_SSH, {"--", with_user(dest, o), cmd});
   s.input = input;
   return run_result(h, dest, s);
 }
 
 Result sftp_on(Host &h, const std::string &dest, const Options &o, const std::string &batch) {
-  Spec s = make_spec(h, o, LMSSH_SFTP, {"-b", "-", with_user(dest, o)});
+  check_no_nul(batch, "sftp batch");
+  Spec s = make_spec(h, o, LMSSH_SFTP, {"-b", "-", "--", with_user(dest, o)});
   s.input = batch;
   return run_result(h, dest, s);
 }
@@ -179,13 +246,18 @@ Result scp_on(Host &h, const Session &s, bool recursive, const std::string &from
 }
 
 std::string remote_spec(const Session &s, const std::string &path) {
+  check_no_ctl(path, "remote path");
   return scp_host(with_user(s.dest, s.opts)) + ":" + path;
+}
+
+std::string remote_glob_escaped_spec(const Session &s, const std::string &path) {
+  return scp_host(with_user(s.dest, s.opts)) + ":" + scp_escape_glob(path);
 }
 
 void close_master(Host &h, const std::string &dest, const Options &o) {
   Options quiet = o;
   quiet.password.clear();
-  Spec s = make_spec(h, quiet, LMSSH_SSH, {"-O", "exit", with_user(dest, o)});
+  Spec s = make_spec(h, quiet, LMSSH_SSH, {"-O", "exit", "--", with_user(dest, o)});
   s.timeout_ms = 10000;
   run_one(s);
 }
@@ -241,24 +313,52 @@ void register_option_setters(dslvm::Registry &r, const char *type, OptsOf of) {
     of(p).port = static_cast<int>(a[0].i);
     return self_value(p);
   });
-  auto text = [&](const char *name, std::string Options::*field) {
-    r.method(type, name, {"string"}, type, [of, field, self_value](void *p, Args &a) {
-      of(p).*field = a[0].s;
-      return self_value(p);
-    });
-  };
-  text("user", &Options::user);
-  text("known_hosts", &Options::known_hosts);
-  text("config", &Options::config);
-  text("jump", &Options::jump);
-  text("strict_host_key", &Options::strict_host_key);
-  text("password", &Options::password);
+  r.method(type, "user", {"string"}, type, [of, self_value](void *p, Args &a) {
+    check_no_ctl(a[0].s, "user", true);
+    if (!a[0].s.empty() && (a[0].s[0] == '-' || a[0].s.find_first_of(" \t/:@") != std::string::npos))
+      throw dslvm::Error("invalid user: " + a[0].s);
+    of(p).user = a[0].s;
+    return self_value(p);
+  });
+  r.method(type, "known_hosts", {"string"}, type, [of, self_value](void *p, Args &a) {
+    check_no_ctl(a[0].s, "known_hosts", true);
+    if (a[0].s.find('"') != std::string::npos) throw dslvm::Error("known_hosts path must not contain '\"'");
+    of(p).known_hosts = a[0].s;
+    return self_value(p);
+  });
+  r.method(type, "config", {"string"}, type, [of, self_value](void *p, Args &a) {
+    check_no_ctl(a[0].s, "config", true);
+    of(p).config = a[0].s;
+    return self_value(p);
+  });
+  r.method(type, "jump", {"string"}, type, [of, self_value](void *p, Args &a) {
+    check_no_ctl(a[0].s, "jump", true);
+    if (!a[0].s.empty() && (a[0].s[0] == '-' || a[0].s.find_first_of(" \t/") != std::string::npos))
+      throw dslvm::Error("invalid jump host: " + a[0].s);
+    of(p).jump = a[0].s;
+    return self_value(p);
+  });
+  r.method(type, "strict_host_key", {"string"}, type, [of, self_value](void *p, Args &a) {
+    check_no_ctl(a[0].s, "strict_host_key", true);
+    if (a[0].s.find_first_of(" \t\"") != std::string::npos) throw dslvm::Error("invalid strict_host_key: " + a[0].s);
+    of(p).strict_host_key = a[0].s;
+    return self_value(p);
+  });
+  r.method(type, "password", {"string"}, type, [of, self_value](void *p, Args &a) {
+    check_no_nul(a[0].s, "password");
+    of(p).password = a[0].s;
+    return self_value(p);
+  });
   r.method(type, "identity", {"string"}, type, [of, self_value](void *p, Args &a) {
+    check_no_ctl(a[0].s, "identity");
     of(p).identities.push_back(a[0].s);
     return self_value(p);
   });
   r.method(type, "option", {"string"}, type, [of, self_value](void *p, Args &a) {
-    if (a[0].s.find('=') == std::string::npos) throw dslvm::Error("option expects Key=Value, got: " + a[0].s);
+    check_no_ctl(a[0].s, "option");
+    auto eq = a[0].s.find('=');
+    if (eq == std::string::npos || eq == 0 || a[0].s[0] == '-')
+      throw dslvm::Error("option expects Key=Value, got: " + a[0].s);
     of(p).raw.push_back(a[0].s);
     return self_value(p);
   });
@@ -339,6 +439,7 @@ Result keygen(Host &h, std::vector<std::string> args, bool must_succeed = true, 
 struct Fingerprint { std::string bits, hash, comment, type; };
 
 Fingerprint fingerprint_of(Host &h, const std::string &path) {
+  check_no_ctl(path, "key path");
   if (dry_run()) return {"0", "SHA256:dry-run", "", "dry-run"};
   Result r = keygen(h, {"-l", "-f", path});
   std::string line = first_line(r.outcome.out);
@@ -359,6 +460,8 @@ Fingerprint fingerprint_of(Host &h, const std::string &path) {
 }
 
 std::string public_of(Host &h, const std::string &path, const std::string &passphrase) {
+  check_no_ctl(path, "key path");
+  check_no_nul(passphrase, "passphrase");
   if (fs::exists(path + ".pub")) return trim(read_whole(path + ".pub"));
   Result r = keygen(h, {"-y", "-P", passphrase, "-f", path});
   return trim(r.outcome.out);
@@ -400,17 +503,18 @@ void register_host(dslvm::Registry &r, Host &h) {
 
   // ---- Ssh ----
   method(r, "Ssh", "connect", {"string"}, "Session", [&h](void *, Args &a) {
-    if (a[0].s.empty() || a[0].s[0] == '-') throw dslvm::Error("Ssh.connect: invalid destination: " + a[0].s);
+    check_dest(a[0].s, "Ssh.connect");
     if (h.sessions.size() >= 65536) throw dslvm::Error("Session object limit exceeded (65536)");
     h.sessions.push_back(Session{a[0].s, h.defaults});
     return Value::object("Session", &h.sessions.back());
   });
   method(r, "Ssh", "each", {"StrList", "string"}, "ResultList", [&h](void *, Args &a) {
     auto *dests = self<StrList>(a[0].obj);
+    check_no_nul(a[1].s, "remote command");
     std::vector<Spec> specs;
     for (const auto &d : dests->items) {
-      if (d.empty() || d[0] == '-') throw dslvm::Error("Ssh.each: invalid destination: " + d);
-      specs.push_back(make_spec(h, h.defaults, LMSSH_SSH, {with_user(d, h.defaults), a[1].s}));
+      check_dest(d, "Ssh.each");
+      specs.push_back(make_spec(h, h.defaults, LMSSH_SSH, {"--", with_user(d, h.defaults), a[1].s}));
     }
     auto outcomes = run_all(specs, static_cast<size_t>(h.defaults.parallel));
     ResultList list;
@@ -453,30 +557,39 @@ void register_host(dslvm::Registry &r, Host &h) {
   });
   method(r, "Session", "put", {"string", "string"}, "void", [&h](void *p, Args &a) {
     auto *s = self<Session>(p);
+    std::string local = local_scp_path(a[0].s);
+    std::string remote = remote_spec(*s, a[1].s);
     if (!dry_run() && !fs::is_regular_file(a[0].s)) throw dslvm::Error("Session.put: not a file: " + a[0].s);
-    require_ok(scp_on(h, *s, false, a[0].s, remote_spec(*s, a[1].s)));
+    require_ok(scp_on(h, *s, false, local, remote));
     return Value::none();
   });
   method(r, "Session", "get", {"string", "string"}, "void", [&h](void *p, Args &a) {
     auto *s = self<Session>(p);
-    require_ok(scp_on(h, *s, false, remote_spec(*s, a[0].s), a[1].s));
+    std::string remote = remote_glob_escaped_spec(*s, a[0].s);
+    std::string local = local_scp_path(a[1].s);
+    require_ok(scp_on(h, *s, false, remote, local));
     return Value::none();
   });
   method(r, "Session", "put_dir", {"string", "string"}, "void", [&h](void *p, Args &a) {
     auto *s = self<Session>(p);
+    std::string local = local_scp_path(a[0].s);
+    std::string remote = remote_spec(*s, a[1].s);
     if (!dry_run() && !fs::is_directory(a[0].s)) throw dslvm::Error("Session.put_dir: not a directory: " + a[0].s);
-    require_ok(scp_on(h, *s, true, a[0].s, remote_spec(*s, a[1].s)));
+    require_ok(scp_on(h, *s, true, local, remote));
     return Value::none();
   });
   method(r, "Session", "get_dir", {"string", "string"}, "void", [&h](void *p, Args &a) {
     auto *s = self<Session>(p);
-    require_ok(scp_on(h, *s, true, remote_spec(*s, a[0].s), a[1].s));
+    std::string remote = remote_glob_escaped_spec(*s, a[0].s);
+    std::string local = local_scp_path(a[1].s);
+    require_ok(scp_on(h, *s, true, remote, local));
     return Value::none();
   });
   method(r, "Session", "cat", {"string"}, "string", [&h](void *p, Args &a) {
     auto *s = self<Session>(p);
+    std::string remote = remote_glob_escaped_spec(*s, a[0].s);
     std::string tmp = h.work() + "/cat-" + std::to_string(h.results.size()) + "-" + std::to_string(getpid());
-    require_ok(scp_on(h, *s, false, remote_spec(*s, a[0].s), tmp));
+    require_ok(scp_on(h, *s, false, remote, tmp));
     if (dry_run()) return Value::string("");
     std::string data = read_whole(tmp);
     unlink(tmp.c_str());
@@ -484,9 +597,10 @@ void register_host(dslvm::Registry &r, Host &h) {
   });
   method(r, "Session", "write", {"string", "string"}, "void", [&h](void *p, Args &a) {
     auto *s = self<Session>(p);
+    std::string remote = remote_spec(*s, a[0].s);
     std::string tmp = h.work() + "/put-" + std::to_string(h.results.size()) + "-" + std::to_string(getpid());
     write_whole(tmp, a[1].s);
-    Result res = scp_on(h, *s, false, tmp, remote_spec(*s, a[0].s));
+    Result res = scp_on(h, *s, false, tmp, remote);
     unlink(tmp.c_str());
     require_ok(res);
     return Value::none();
@@ -507,7 +621,7 @@ void register_host(dslvm::Registry &r, Host &h) {
     return res;
   };
   method(r, "Session", "ls", {"string"}, "StrList", [&h, &r, sftp_ok](void *p, Args &a) {
-    Result res = sftp_ok(self<Session>(p), "ls -1 " + sftp_quote(a[0].s) + "\n");
+    Result res = sftp_ok(self<Session>(p), "ls -1 -- " + sftp_quote(a[0].s, true) + "\n");
     std::vector<std::string> names;
     for (const auto &line : split_lines(res.outcome.out)) {
       if (line.empty() || line.rfind("sftp> ", 0) == 0) continue;
@@ -518,22 +632,22 @@ void register_host(dslvm::Registry &r, Host &h) {
   });
   method(r, "Session", "exists", {"string"}, "bool", [&h](void *p, Args &a) {
     auto *s = self<Session>(p);
-    return Value::boolean(succeeded(sftp_on(h, s->dest, s->opts, "ls -1 " + sftp_quote(a[0].s) + "\n").outcome));
+    return Value::boolean(succeeded(sftp_on(h, s->dest, s->opts, "ls -1 -- " + sftp_quote(a[0].s, true) + "\n").outcome));
   });
   method(r, "Session", "mkdir", {"string"}, "void", [sftp_ok](void *p, Args &a) {
-    sftp_ok(self<Session>(p), "mkdir " + sftp_quote(a[0].s) + "\n");
+    sftp_ok(self<Session>(p), "mkdir -- " + sftp_quote(a[0].s) + "\n");
     return Value::none();
   });
   method(r, "Session", "rm", {"string"}, "void", [sftp_ok](void *p, Args &a) {
-    sftp_ok(self<Session>(p), "rm " + sftp_quote(a[0].s) + "\n");
+    sftp_ok(self<Session>(p), "rm -- " + sftp_quote(a[0].s) + "\n");
     return Value::none();
   });
   method(r, "Session", "rmdir", {"string"}, "void", [sftp_ok](void *p, Args &a) {
-    sftp_ok(self<Session>(p), "rmdir " + sftp_quote(a[0].s) + "\n");
+    sftp_ok(self<Session>(p), "rmdir -- " + sftp_quote(a[0].s) + "\n");
     return Value::none();
   });
   method(r, "Session", "rename", {"string", "string"}, "void", [sftp_ok](void *p, Args &a) {
-    sftp_ok(self<Session>(p), "rename " + sftp_quote(a[0].s) + " " + sftp_quote(a[1].s) + "\n");
+    sftp_ok(self<Session>(p), "rename -- " + sftp_quote(a[0].s) + " " + sftp_quote(a[1].s) + "\n");
     return Value::none();
   });
   method(r, "Session", "close", {}, "void", [&h](void *p, Args &) {
@@ -584,6 +698,10 @@ void register_host(dslvm::Registry &r, Host &h) {
   });
   auto generate = [&h, hold_key](const std::string &path, const std::string &type, const std::string &comment,
                                  const std::string &passphrase) {
+    check_no_ctl(path, "key path");
+    check_no_ctl(type, "key type");
+    check_no_ctl(comment, "comment", true);
+    check_no_nul(passphrase, "passphrase");
     if (fs::exists(path) || fs::exists(path + ".pub")) throw dslvm::Error("Keys.generate: refusing to overwrite " + path);
     std::vector<std::string> args = {"-q", "-t", type, "-f", path, "-N", passphrase, "-C", comment};
     if (h.key_bits > 0) { args.push_back("-b"); args.push_back(std::to_string(h.key_bits)); }
@@ -595,43 +713,68 @@ void register_host(dslvm::Registry &r, Host &h) {
     return generate(a[0].s, a[1].s, a[2].s, a[3].s);
   });
   method(r, "Keys", "load", {"string"}, "Key", [hold_key](void *, Args &a) {
+    check_no_ctl(a[0].s, "key path");
     if (!dry_run() && !fs::exists(a[0].s)) throw dslvm::Error("Keys.load: no such file: " + a[0].s);
     return hold_key(a[0].s);
   });
   method(r, "Keys", "fingerprint", {"string"}, "string", [&h](void *, Args &a) { return Value::string(fingerprint_of(h, a[0].s).hash); });
   method(r, "Keys", "change_passphrase", {"string", "string", "string"}, "void", [&h](void *, Args &a) {
+    check_no_ctl(a[0].s, "key path");
+    check_no_nul(a[1].s, "old passphrase");
+    check_no_nul(a[2].s, "new passphrase");
     keygen(h, {"-q", "-p", "-f", a[0].s, "-P", a[1].s, "-N", a[2].s});
     return Value::none();
   });
   method(r, "Keys", "set_comment", {"string", "string", "string"}, "void", [&h](void *, Args &a) {
+    check_no_ctl(a[0].s, "key path");
+    check_no_ctl(a[1].s, "comment", true);
+    check_no_nul(a[2].s, "passphrase");
     keygen(h, {"-q", "-c", "-f", a[0].s, "-P", a[2].s, "-C", a[1].s});
     return Value::none();
   });
   method(r, "Keys", "known_hosts_find", {"string", "string"}, "string", [&h](void *, Args &a) {
+    check_no_ctl(a[0].s, "host");
+    check_no_ctl(a[1].s, "known_hosts path");
     Result res = keygen(h, {"-F", a[0].s, "-f", a[1].s}, false);
     return Value::string(res.outcome.out);
   });
   method(r, "Keys", "known_hosts_remove", {"string", "string"}, "void", [&h](void *, Args &a) {
+    check_no_ctl(a[0].s, "host");
+    check_no_ctl(a[1].s, "known_hosts path");
     keygen(h, {"-q", "-R", a[0].s, "-f", a[1].s}, false);
     return Value::none();
   });
   method(r, "Keys", "known_hosts_hash", {"string"}, "void", [&h](void *, Args &a) {
+    check_no_ctl(a[0].s, "known_hosts path");
     keygen(h, {"-q", "-H", "-f", a[0].s});
     return Value::none();
   });
   method(r, "Keys", "certify", {"string", "string", "string", "string", "string"}, "string", [&h](void *, Args &a) {
     // ca_key, public_key, identity, principals (comma separated), validity (ssh-keygen -V, e.g. "+52w")
-    keygen(h, {"-q", "-s", a[0].s, "-I", a[2].s, "-n", a[3].s, "-V", a[4].s, a[1].s});
+    check_no_ctl(a[0].s, "ca_key path");
+    check_no_ctl(a[1].s, "public_key path");
+    check_no_ctl(a[2].s, "identity");
+    check_no_ctl(a[3].s, "principals");
+    check_no_ctl(a[4].s, "validity");
+    keygen(h, {"-q", "-s", a[0].s, "-I", a[2].s, "-n", a[3].s, "-V", a[4].s, "--", a[1].s});
     std::string cert = a[1].s;
     if (cert.size() > 4 && cert.compare(cert.size() - 4, 4, ".pub") == 0) cert.resize(cert.size() - 4);
     return Value::string(cert + "-cert.pub");
   });
   method(r, "Keys", "sign", {"string", "string", "string"}, "string", [&h](void *, Args &a) {
-    keygen(h, {"-q", "-Y", "sign", "-f", a[0].s, "-n", a[1].s, a[2].s});
+    check_no_ctl(a[0].s, "key path");
+    check_no_ctl(a[1].s, "namespace");
+    check_no_ctl(a[2].s, "file path");
+    keygen(h, {"-q", "-Y", "sign", "-f", a[0].s, "-n", a[1].s, "--", a[2].s});
     return Value::string(a[2].s + ".sig");
   });
   method(r, "Keys", "verify", {"string", "string", "string", "string", "string"}, "bool", [&h](void *, Args &a) {
     // allowed_signers, identity, namespace, signature file, data file
+    check_no_ctl(a[0].s, "allowed_signers path");
+    check_no_ctl(a[1].s, "identity");
+    check_no_ctl(a[2].s, "namespace");
+    check_no_ctl(a[3].s, "signature path");
+    check_no_ctl(a[4].s, "data path");
     if (!dry_run() && !fs::exists(a[4].s)) throw dslvm::Error("Keys.verify: no such file: " + a[4].s);
     Result res = keygen(h, {"-Y", "verify", "-f", a[0].s, "-I", a[1].s, "-n", a[2].s, "-s", a[3].s}, false, read_whole(a[4].s));
     return Value::boolean(succeeded(res.outcome));
@@ -658,10 +801,12 @@ void register_host(dslvm::Registry &r, Host &h) {
   method(r, "Io", "write", {"string", "string"}, "void", [](void *, Args &a) { write_whole(a[0].s, a[1].s); return Value::none(); });
   method(r, "Io", "append", {"string", "string"}, "void", [](void *, Args &a) { write_whole(a[0].s, a[1].s, true); return Value::none(); });
   method(r, "Io", "exists", {"string"}, "bool", [](void *, Args &a) {
+    check_no_ctl(a[0].s, "local path");
     std::error_code ec;
     return Value::boolean(fs::exists(a[0].s, ec));
   });
   method(r, "Io", "mkdir", {"string"}, "void", [](void *, Args &a) {
+    check_no_ctl(a[0].s, "local path");
     if (dry_run()) { std::cerr << "[dry-run] mkdir " << a[0].s << "\n"; return Value::none(); }
     std::error_code ec;
     fs::create_directories(a[0].s, ec);
@@ -669,6 +814,7 @@ void register_host(dslvm::Registry &r, Host &h) {
     return Value::none();
   });
   method(r, "Io", "remove", {"string"}, "void", [](void *, Args &a) {
+    check_no_ctl(a[0].s, "local path");
     if (dry_run()) { std::cerr << "[dry-run] remove " << a[0].s << "\n"; return Value::none(); }
     std::error_code ec;
     fs::remove_all(a[0].s, ec);
@@ -676,6 +822,7 @@ void register_host(dslvm::Registry &r, Host &h) {
     return Value::none();
   });
   method(r, "Io", "env", {"string"}, "string", [](void *, Args &a) {
+    check_no_ctl(a[0].s, "environment variable name");
     const char *v = getenv(a[0].s.c_str());
     return Value::string(v ? v : "");
   });
@@ -717,12 +864,14 @@ void register_host(dslvm::Registry &r, Host &h) {
     return Value::none();
   });
   method(r, "Report", "write_text", {"string"}, "void", [](void *p, Args &a) {
+    check_no_ctl(a[0].s, "report path");
     std::ofstream file(a[0].s, std::ios::binary);
     if (!file) throw dslvm::Error("cannot write " + a[0].s);
     file << report_text(*self<Report>(p));
     return Value::none();
   });
   method(r, "Report", "write_json", {"string"}, "void", [](void *p, Args &a) {
+    check_no_ctl(a[0].s, "report path");
     auto &fs_ = self<Report>(p)->findings;
     std::string out = "{\"findings\":[";
     for (size_t i = 0; i < fs_.size(); i++) {

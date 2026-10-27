@@ -316,6 +316,100 @@ E2
   expect_contains "$ERR" "[dry-run] ssh " "dry-run lists the ssh command"
   [ ! -e "$R/dry.txt" ] && [ ! -e "$WORK/dry-local.txt" ] || fail "dry-run changed something"
   ok "--dry-run prints the commands and changes nothing"
+
+  # ---- security regressions: control-char injection, glob neutralization, odd legal names ----
+  echo "keep" > "$R/victim.txt"
+  dsl inject_nl <<E2
+ssh.config("$WORK/ssh_config");
+let s = ssh.connect("testhost");
+s.exists("$R/ok\"\nrm \"$R/victim.txt");
+E2
+  [ "$RC" = 3 ] || fail "newline injection must fail with rc=3 (got $RC: $OUT $ERR)"
+  expect_contains "$OUT" "contains a control character" "newline injection error"
+  [ -f "$R/victim.txt" ] || fail "newline injection removed victim.txt"
+
+  dsl inject_cr <<E2
+ssh.config("$WORK/ssh_config");
+let s = ssh.connect("testhost");
+s.rm("$R/ok\rrm $R/victim.txt");
+E2
+  [ "$RC" = 3 ] || fail "CR injection must fail with rc=3 (got $RC: $OUT $ERR)"
+  expect_contains "$OUT" "contains a control character" "CR injection error"
+
+  dsl inject_put <<E2
+ssh.config("$WORK/ssh_config");
+let s = ssh.connect("testhost");
+s.write("$R/ok\nbad.txt", "x");
+E2
+  [ "$RC" = 3 ] || fail "write newline path must fail with rc=3 (got $RC: $OUT $ERR)"
+  expect_contains "$OUT" "contains a control character" "write newline error"
+
+  dsl inject_user <<E2
+ssh.user("-oProxyCommand=evil");
+E2
+  [ "$RC" = 3 ] || fail "option-like user must fail with rc=3 (got $RC: $OUT $ERR)"
+  ok "control-character and option-injection attempts are rejected before invoking OpenSSH"
+
+  mkdir -p "$R/glob_dir"
+  printf 'victim-data' > "$R/glob_dir/victim.txt"
+  printf 'brace-a' > "$R/glob_dir/brace_a.txt"
+  printf 'brace-b' > "$R/glob_dir/brace_b.txt"
+  dsl glob_check <<E2
+ssh.config("$WORK/ssh_config");
+let s = ssh.connect("testhost");
+io.print("wild=" + str(s.exists("$R/glob_dir/*.txt")) + str(s.exists("$R/glob_dir/victim?.txt")) + str(s.exists("$R/glob_dir/victim[a-z].txt")) + str(s.exists("$R/glob_dir/brace_{a,b}.txt")));
+s.write("$R/glob_dir/star*.txt", "lit-star");
+s.write("$R/glob_dir/qmark?.txt", "lit-qmark");
+s.write("$R/glob_dir/brack[a-z].txt", "lit-brack");
+s.write("$R/glob_dir/brace{a,b}.txt", "lit-brace");
+io.print("lit=" + s.cat("$R/glob_dir/star*.txt") + "|" + s.cat("$R/glob_dir/qmark?.txt") + "|" + s.cat("$R/glob_dir/brack[a-z].txt") + "|" + s.cat("$R/glob_dir/brace{a,b}.txt"));
+s.get("$R/glob_dir/brack[a-z].txt", "$WORK/got_brack.txt");
+io.print("got=" + io.read("$WORK/got_brack.txt"));
+s.rm("$R/glob_dir/star*.txt");
+s.rm("$R/glob_dir/qmark?.txt");
+s.rm("$R/glob_dir/brack[a-z].txt");
+s.rm("$R/glob_dir/brace{a,b}.txt");
+io.print("survivors=" + s.cat("$R/glob_dir/victim.txt") + "|" + s.cat("$R/glob_dir/brace_a.txt") + "|" + s.cat("$R/glob_dir/brace_b.txt"));
+E2
+  [ "$RC" = 0 ] || fail "glob_check failed rc=$RC out=$OUT err=$ERR"
+  expect_contains "$OUT" "wild=falsefalsefalsefalse" "globs and braces do not expand on exists/ls"
+  expect_contains "$OUT" "lit=lit-star|lit-qmark|lit-brack|lit-brace" "literal glob/brace filenames round-trip via write/cat"
+  expect_contains "$OUT" "got=lit-brack" "literal bracket filename round-trips via get"
+  expect_contains "$OUT" "survivors=victim-data|brace-a|brace-b" "rm on literal glob/brace filenames leaves matching siblings untouched"
+  ok "glob (* ? [) and brace ({a,b}) characters are neutralized across sftp and scp operations"
+
+  dsl odd_names <<E2
+ssh.config("$WORK/ssh_config");
+let s = ssh.connect("testhost");
+let d = "$R/odd dir \"quote\" 'single' #hash";
+s.mkdir(d);
+let f1 = d + "/space \"quote\" 'tick' \\\\back.txt";
+s.write(f1, "odd-1");
+io.print("f1=" + s.cat(f1) + " ex=" + str(s.exists(f1)));
+let f2 = d + "/renamed \"2\" 'b'.txt";
+s.rename(f1, f2);
+io.print("ls=" + s.ls(d).join("|"));
+s.rm(f2);
+s.rmdir(d);
+io.print("d_gone=" + str(s.exists(d)));
+s.mkdir("$R/-l");
+s.write("$R/-l/-r", "dash-val");
+io.print("dash=" + s.cat("$R/-l/-r") + " ls_dash=" + s.ls("$R/-l").join(","));
+s.rm("$R/-l/-r");
+s.rmdir("$R/-l");
+io.write("$WORK/local:colon.txt", "colon-val");
+s.put("$WORK/local:colon.txt", "$R/remote:colon.txt");
+s.get("$R/remote:colon.txt", "$WORK/back:colon.txt");
+io.print("colon=" + io.read("$WORK/back:colon.txt"));
+s.rm("$R/remote:colon.txt");
+E2
+  [ "$RC" = 0 ] || fail "odd_names failed rc=$RC out=$OUT err=$ERR"
+  expect_contains "$OUT" "f1=odd-1 ex=true" "spaces/quotes/backslash write+cat+exists"
+  expect_contains "$OUT" "ls=renamed \"2\" 'b'.txt" "rename+ls on odd directory and file"
+  expect_contains "$OUT" "d_gone=false" "rm+rmdir on odd directory"
+  expect_contains "$OUT" "dash=dash-val ls_dash=-r" "leading-dash paths are not parsed as sftp flags"
+  expect_contains "$OUT" "colon=colon-val" "colon in filenames is not parsed as host:path"
+  ok "odd but legal names (spaces, quotes, backslashes, #hash, leading '-', ':') work across put/get/write/cat/ls/mkdir/rename/rm/rmdir"
 fi
 
 # ---- examples ----

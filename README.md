@@ -85,7 +85,7 @@ Build from source (needs cmake, a C/C++ toolchain, autoconf and automake, static
 ```sh
 scripts/sync-openssh.sh          # fetch the pinned OpenSSH source into third_party/
 cmake -S . -B build -G Ninja && cmake --build build
-./test.sh                        # 26 checks, including a throw-away sshd on 127.0.0.1
+./test.sh                        # 29 checks, including a throw-away sshd on 127.0.0.1
 scripts/docker-build.sh          # the fully static musl build, in an Alpine container
 ```
 
