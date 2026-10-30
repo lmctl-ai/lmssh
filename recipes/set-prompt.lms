@@ -1,0 +1,13 @@
+# Set a short Bash prompt using the existing SSH alias/configuration.
+# Preview: lmctl recipes/set-prompt.lms web1 web1 [EXPECTED_HOSTNAME]
+# Apply:   lmctl recipes/set-prompt.lms web1 web1 [EXPECTED_HOSTNAME] --apply
+import "../scripts/lib/prompt.lms";
+let positional=[];let apply=false;let preview=false;
+for(arg in ARGV){
+  if(arg=="--apply"){apply=true;}
+  else if(arg=="--preview"||arg=="--dry-run"){preview=true;}
+  else{assert(!starts_with(arg,"--"),"unknown flag: "+arg);push(positional,arg);}
+}
+assert(len(positional)>=2&&len(positional)<=3,"usage: DEST LABEL [EXPECTED_HOSTNAME] [--apply]");
+assert(!(apply&&preview),"choose preview or apply");
+set_host_prompt(positional[0],positional[1],len(positional)==3?positional[2]:"",apply);

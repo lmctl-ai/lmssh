@@ -24,6 +24,8 @@ expect_contains(){ contains "$1" "$2" || fail "$3: expected '$2' in: $1"; }
 
 scripts/sync-sdk.sh --verify >/dev/null || fail "SDK header pin mismatch"
 ok "VM and catalog headers match sdk.lock"
+python3 scripts/test-set-prompt.py
+ok "managed Bash prompt recipe preserves startup data and verifies rendered aliases"
 if [ -z "${SKIP_BUILD:-}" ]; then
   scripts/sync-openssh.sh --verify >/dev/null 2>&1 || scripts/sync-openssh.sh >/dev/null
 fi

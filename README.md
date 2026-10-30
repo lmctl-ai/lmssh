@@ -69,6 +69,23 @@ lmssh --dsl job.dslb -- arg1 arg2   # script arguments, read with io.args()
 
 The API covers sessions (`exec`, `output`, `put`, `get`, `put_dir`, `get_dir`, `cat`, `write`, `ls`, `exists`, `mkdir`, `rm`, `rename`, raw `sftp` batches), parallel fan-out over many hosts, jump hosts, connection reuse, timeouts, password and passphrase prompts, key generation, fingerprints, certificates, signatures, `known_hosts` maintenance, and a small `io` and `report` toolbox. See [durable-memory/04-api.md](durable-memory/04-api.md) for the reference and [examples/](examples/) for ready-to-run scripts.
 
+## Short host prompts
+
+The [prompt recipe](recipes/set-prompt.lms) configures interactive Bash using
+the existing SSH alias and strict host-key checking:
+
+```bash
+lmctl recipes/set-prompt.lms web1 web1 expected-kernel-hostname
+lmctl recipes/set-prompt.lms web1 web1 expected-kernel-hostname --apply
+```
+
+It produces prompts such as `web1:~/repos$`, preserves the rest of `.bashrc`,
+keeps private backups, and verifies the result in a fresh shell. The reusable
+function `set_host_prompt(destination, label, expected_hostname, apply)` lets
+fleet scripts configure each host with one parameterized call. See the
+[recipe guide](recipes/README.md). Remote prerequisites are Python 3 and
+Bash 4.4+; existing shells pick up changes after `source ~/.bashrc` or reconnecting.
+
 ## How it works
 
 The four OpenSSH client programs are compiled from a pinned `openssh-portable` tag with each `main()` renamed, and linked into one image together with OpenSSL's libcrypto, zlib and the [lmcode-cpp](https://github.com/lmctl-ai/lmcode-cpp) bytecode VM. A script step such as `session.exec(...)` forks a child, runs the real `ssh` code in it, and collects stdout, stderr and the exit status through pipes — so OpenSSH keeps its own behaviour (`exit()` calls, global state, `ssh_config`, `known_hosts`, multiplexing) and the script only sees results. Details: [durable-memory/](durable-memory/index.md).
