@@ -1,4 +1,4 @@
-$ lmssh --dsl build/known-hosts.dslb -- ~/.ssh/known_hosts api.internal.net db-primary.internal.net bastion.internal.net
+$ lmssh --lmcode build/known-hosts.dslb -- ~/.ssh/known_hosts api.internal.net db-primary.internal.net bastion.internal.net
 api.internal.net: on file
 bastion.internal.net: on file
 unknown db-primary.internal.net:0: no key on file in ~/.ssh/known_hosts

@@ -1,6 +1,6 @@
 # Examples
 
-Each example is an lmscript file. Compile it with `lmscript NAME.lms NAME.dslb` from this directory (the schema path is relative), then run `lmssh --dsl NAME.dslb -- ARGS...`. Set `LMSSH_SSH_CONFIG=/path/to/ssh_config` to use a specific `ssh_config(5)` file instead of `~/.ssh/config`. `lmssh --dry-run --dsl ...` prints the commands without running them.
+Each example is an lmscript file. Compile it with `lmscript NAME.lms NAME.dslb` from this directory (the schema path is relative), then run `lmssh --lmcode NAME.dslb -- ARGS...`. Set `LMSSH_SSH_CONFIG=/path/to/ssh_config` to use a specific `ssh_config(5)` file instead of `~/.ssh/config`. `lmssh --dry-run --lmcode ...` prints the commands without running them.
 
 | Script | Does | Arguments |
 | --- | --- | --- |

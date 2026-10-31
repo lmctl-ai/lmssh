@@ -1,12 +1,12 @@
 # fetch-files
-# usage: lmssh --dsl fetch-files.dslb -- HOSTS_FILE REMOTE_PATH OUT_DIR
+# usage: lmssh --lmcode fetch-files.dslb -- HOSTS_FILE REMOTE_PATH OUT_DIR
 # Copies REMOTE_PATH from each host into OUT_DIR/<host>/ ; hosts that fail are reported, the rest still run.
 out = ARGV.len() > 0 ? ARGV[0] : "build/fetch-files.dslb";
 p = _lmcode_ schema="../schema/lmssh.dsl.json";
 # Optional: LMSSH_SSH_CONFIG points at an ssh_config(5) file; otherwise ~/.ssh/config applies as usual.
 if (io.env("LMSSH_SSH_CONFIG") != "") { ssh.config(io.env("LMSSH_SSH_CONFIG")); }
 let args = io.args();
-if (args.len() != 3) { io.fail("usage: lmssh --dsl fetch-files.dslb -- HOSTS_FILE REMOTE_PATH OUT_DIR"); }
+if (args.len() != 3) { io.fail("usage: lmssh --lmcode fetch-files.dslb -- HOSTS_FILE REMOTE_PATH OUT_DIR"); }
 let hosts = io.lines(args.at(0));
 ssh.connect_timeout(10).timeout(300);
 for (i in range(0, hosts.len())) {

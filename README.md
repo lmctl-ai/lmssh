@@ -1,6 +1,6 @@
 # lmssh
 
-**lmssh is one static executable that carries OpenSSH's `ssh`, `sftp`, `scp` and `ssh-keygen` clients and lets scripts drive them.** It is built for automation: write an [lmscript](https://lmctl.com/tools/lmscript/skill.html) `_dsl_` block that runs commands on a fleet, moves files, rotates keys or signs artifacts, compile it to bytecode, and run it with `lmssh --dsl`. No OpenSSH installation, no libraries, nothing else to deploy.
+**lmssh is one static executable that carries OpenSSH's `ssh`, `sftp`, `scp` and `ssh-keygen` clients and lets scripts drive them.** It is built for automation: write an [lmscript](https://lmctl.com/tools/lmscript/skill.html) `_dsl_` block that runs commands on a fleet, moves files, rotates keys or signs artifacts, compile it to bytecode, and run it with `lmssh --lmcode`. No OpenSSH installation, no libraries, nothing else to deploy.
 
 [![CI](https://github.com/lmctl-ai/lmssh/actions/workflows/ci.yml/badge.svg)](https://github.com/lmctl-ai/lmssh/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -61,10 +61,10 @@ savedsl(p, "fleet-check.dslb");
 ```
 
 ```sh
-lmscript fleet-check.lms            # compile against the schema (lmssh --dsl-schema --json prints it)
-lmssh --dsl fleet-check.dslb        # run; exit 0 ok, 3 run/load error, 4 the script's own verdict
-lmssh --dry-run --dsl fleet-check.dslb   # print every ssh/scp/sftp/ssh-keygen command, run none
-lmssh --dsl job.dslb -- arg1 arg2   # script arguments, read with io.args()
+lmscript fleet-check.lms            # compile against the schema (lmssh --lmcode-schema --json prints it)
+lmssh --lmcode fleet-check.dslb        # run; exit 0 ok, 3 run/load error, 4 the script's own verdict
+lmssh --dry-run --lmcode fleet-check.dslb   # print every ssh/scp/sftp/ssh-keygen command, run none
+lmssh --lmcode job.dslb -- arg1 arg2   # script arguments, read with io.args()
 ```
 
 The API covers sessions (`exec`, `output`, `put`, `get`, `put_dir`, `get_dir`, `cat`, `write`, `ls`, `exists`, `mkdir`, `rm`, `rename`, raw `sftp` batches), parallel fan-out over many hosts, jump hosts, connection reuse, timeouts, password and passphrase prompts, key generation, fingerprints, certificates, signatures, `known_hosts` maintenance, and a small `io` and `report` toolbox. See [durable-memory/04-api.md](durable-memory/04-api.md) for the reference and [examples/](examples/) for ready-to-run scripts.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate schema/lmssh.host.json from `lmssh --dsl-signatures` (the registry is the source of truth).
+"""Generate schema/lmssh.host.json from `lmssh --lmcode-signatures` (the registry is the source of truth).
 
 usage: gen-schema.py LMSSH_BINARY > schema/lmssh.host.json
 The checked-in schema is verified against the compiler's own signature listing by test.sh.
@@ -7,7 +7,7 @@ The checked-in schema is verified against the compiler's own signature listing b
 import json, re, subprocess, sys, importlib.util
 from pathlib import Path
 
-lines = subprocess.run([sys.argv[1], "--dsl-signatures"], check=True, capture_output=True, text=True).stdout.splitlines()
+lines = subprocess.run([sys.argv[1], "--lmcode-signatures"], check=True, capture_output=True, text=True).stdout.splitlines()
 types, functions, context = {}, {}, {}
 sig = re.compile(r"^(?:fn (\w+)|method (\w+)\.(\w+))\((.*?)\) -> (\w+)$")
 for line in lines:

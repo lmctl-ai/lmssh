@@ -3,7 +3,7 @@
 ```
                 lmscript (.lms)  ──compile against schema/lmssh.dsl.json──▶  .dslb bytecode
                                                                                   │
- lmssh --dsl x.dslb ─▶ cpp/main.cpp ─▶ dslvm::Program::load/run ─▶ cpp/host.cpp (registry)
+ lmssh --lmcode x.dslb ─▶ cpp/main.cpp ─▶ dslvm::Program::load/run ─▶ cpp/host.cpp (registry)
                                                                                   │ argv + env + stdin
                                                                          cpp/runner.cpp  fork()
                                                                                   │
@@ -34,7 +34,7 @@ The OpenSSH programs are written as processes: they call `exit()`, keep state in
 2. `argv[1]` starts with a single `-` → the ssh client (every transport/ProxyJump invocation begins with an option; lmssh's own options start with `--`).
 3. `argv[1]` is `ssh|sftp|scp|ssh-keygen|keygen` → that program with the remaining arguments, original options, original exit code. This is the interactive path and never forks.
 4. `LMSSH_ASKPASS_SECRET` set and exactly one non-option argument → askpass mode (below).
-5. Otherwise lmssh's own options: `--version`, `--dsl-schema [--json]`, `--dsl-signatures`, `[--dry-run] --dsl FILE... [-- ARG...]`.
+5. Otherwise lmssh's own options: `--version`, `--lmcode-schema [--json]`, `--lmcode-signatures`, `[--dry-run] --lmcode FILE... [-- ARG...]`.
 
 The executable's own path comes from `/proc/self/exe` (Linux) or `_NSGetExecutablePath` (macOS), falling back to `argv[0]` / `PATH`.
 

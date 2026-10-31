@@ -1,4 +1,4 @@
-# sdk.lock pins the vendored header by sha256 and --dsl-schema --json is asserted byte-identical: no CRLF.
+# sdk.lock pins the vendored header by sha256 and --lmcode-schema --json is asserted byte-identical: no CRLF.
 * text=auto eol=lf
 *.png binary
 *.dslb binary

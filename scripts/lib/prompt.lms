@@ -132,7 +132,7 @@ io.print(result.stdout());
 if(!result.ok()){io.eprint(result.stderr());io.fail("prompt configuration failed on "+${destination});}
 end _dsl_
   let code=temp_file();savedsl(program,code);
-  let result=system(concat(dsl_cli(program),["--dsl",code]),{timeoutMs:75000});
+  let result=system(concat(dsl_cli(program),["--lmcode",code]),{timeoutMs:75000});
   remove_file(code);
   println(result.stdout);
   if(result.code!=0){println(result.stderr);}

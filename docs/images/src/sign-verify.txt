@@ -1,4 +1,4 @@
-$ lmssh --dsl build/sign-verify.dslb
+$ lmssh --lmcode build/sign-verify.dslb
 original verifies: true
 tampered verifies: false
 {"ok": true, "result": null}

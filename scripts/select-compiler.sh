@@ -9,17 +9,7 @@ esac
 candidate="${LMSCRIPT_BIN:-}"
 if [[ -z "$candidate" ]]; then candidate="$(command -v lmscript || true)"; fi
 if [[ -z "$candidate" ]]; then echo "error: no lmscript compiler found; install @lmctl-ai/lmctl >= $MIN_VERSION or set LMSCRIPT_BIN" >&2; exit 2; fi
-version="$("$candidate" --version 2>/dev/null || true)"
-python3 - "$version" "$MIN_VERSION" <<'PY'
-import re, sys
-def parse(value):
-    match = re.search(r'^lmscript\s+(\d+)\.(\d+)\.(\d+)(?:\+[A-Za-z0-9.-]+)?\s*$', value)
-    return tuple(map(int, match.groups())) if match else None
-got, minimum = parse(sys.argv[1]), parse('lmscript ' + sys.argv[2])
-if got is None or got < minimum:
-    print(f"error: lmscript must be >= {sys.argv[2]} (got {sys.argv[1] or 'unknown'})", file=sys.stderr)
-    raise SystemExit(2)
-PY
+# Test source compiler capabilities; its package version may be historical.
 SCHEMA="$WORK/implicit-std.schema.json"
 PROBE="$WORK/probe.lms"
 cat > "$SCHEMA" <<'JSON'
@@ -46,9 +36,9 @@ for source in "$PROBE" "$WORK/probe-lmcode.lms"; do
 import hashlib, pathlib, sys
 bytecode = pathlib.Path(sys.argv[1]).read_bytes()
 schema = pathlib.Path(sys.argv[2]).read_bytes()
-if bytecode[:6] != b'DSLB\x00\x05': raise SystemExit('error: compiler did not emit DSL bytecode v5')
+if bytecode[:6] != b'DSLB\x00\x06': raise SystemExit('error: compiler did not emit DSL bytecode v6')
 if bytecode[6:38] != hashlib.sha256(schema).digest(): raise SystemExit('error: bytecode schema hash does not match raw host schema bytes')
 PY
 done
-"$candidate" --dsl-signatures "$SCHEMA" | grep -Fq 'fn str_len(string) -> int' || { echo "error: compiler inspection surface lacks implicit std fn str_len(string) -> int" >&2; exit 2; }
+"$candidate" --lmcode-signatures "$SCHEMA" | grep -Fq 'fn str_len(string) -> int' || { echo "error: compiler inspection surface lacks implicit std fn str_len(string) -> int" >&2; exit 2; }
 printf '%s\n' "$candidate"

@@ -1,5 +1,5 @@
 # sign-verify
-# usage: lmssh --dsl sign-verify.dslb      (no network; builds throw-away keys under a temp dir)
+# usage: lmssh --lmcode sign-verify.dslb      (no network; builds throw-away keys under a temp dir)
 # Signs a file with an ed25519 key (ssh-keygen -Y sign), verifies it, then shows that a tampered copy fails.
 out = ARGV.len() > 0 ? ARGV[0] : "build/sign-verify.dslb";
 p = _lmcode_ schema="../schema/lmssh.dsl.json";

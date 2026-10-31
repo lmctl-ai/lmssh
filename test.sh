@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build (unless SKIP_BUILD=1) and test lmssh. Needs: cmake, a C/C++ toolchain, autoconf/automake, static libcrypto/libz,
-# python3, an lmscript v5 compiler (scripts/select-compiler.sh) and, for the end-to-end checks, an sshd binary
+# python3, an lmscript v6 compiler (scripts/select-compiler.sh) and, for the end-to-end checks, an sshd binary
 # (LMSSH_REQUIRE_SSHD=1 makes a missing or unusable sshd a failure instead of a skip).
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -42,35 +42,36 @@ if [ -z "${SKIP_BUILD:-}" ]; then
 fi
 [ -x "$HOST" ] || fail "no executable at $HOST"
 ok "lmssh built"
+python3 tests/check-host-flags.py schema/lmssh.dsl.json "$HOST" || fail "hard host flag cutover"
 
 LMSCRIPT="$(scripts/select-compiler.sh)"
-ok "DSL v5 compiler found: $LMSCRIPT"
+ok "lmcode v6 compiler found: $LMSCRIPT"
 
 # ---- identity, schema, static linking ----
 want_version="$(sed -n 's/^project(lmssh VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
 [ "$("$HOST" --version)" = "lmssh $want_version" ] || fail "--version"
 ok "--version is lmssh $want_version"
-"$HOST" --dsl-schema --json | cmp - schema/lmssh.dsl.json || fail "embedded schema differs from schema/lmssh.dsl.json"
-ok "--dsl-schema --json is byte-identical to schema/lmssh.dsl.json"
-"$HOST" --dsl-signatures > "$WORK/host.sig"
-"$LMSCRIPT" --dsl-signatures schema/lmssh.dsl.json > "$WORK/compiler.sig"
+"$HOST" --lmcode-schema --json | cmp - schema/lmssh.dsl.json || fail "embedded schema differs from schema/lmssh.dsl.json"
+ok "--lmcode-schema --json is byte-identical to schema/lmssh.dsl.json"
+"$HOST" --lmcode-signatures > "$WORK/host.sig"
+"$LMSCRIPT" --lmcode-signatures schema/lmssh.dsl.json > "$WORK/compiler.sig"
 diff "$WORK/host.sig" "$WORK/compiler.sig" >/dev/null || fail "registry signatures differ from the compiler's reading of the schema"
 ok "registry signatures match the compiler ($(wc -l < "$WORK/host.sig" | tr -d ' ') signatures)"
 cmp schema/lmssh.host.json schema/lmssh.dsl.json || fail "generated schema differs from host-only input"
 python3 scripts/merge-std.py --host-only schema/lmssh.dsl.json "$WORK/host-only-schema.json"
 cmp schema/lmssh.dsl.json "$WORK/host-only-schema.json" || fail "embedded schema still declares standard members"
-"$HOST" --dsl-signatures >"$WORK/registry-signatures.txt"
-"$LMSCRIPT" --dsl-signatures cpp/std/lmcode-std.schema.json >"$WORK/standard-signatures.txt"
+"$HOST" --lmcode-signatures >"$WORK/registry-signatures.txt"
+"$LMSCRIPT" --lmcode-signatures cpp/std/lmcode-std.schema.json >"$WORK/standard-signatures.txt"
 python3 - "$WORK" <<'PYHOST'
 from pathlib import Path
 import sys
 work=Path(sys.argv[1])
 registry=set((work/'registry-signatures.txt').read_text().splitlines())
 standard=set((work/'standard-signatures.txt').read_text().splitlines())
-assert len(standard)==72, len(standard)
+assert len(standard)==206, len(standard)
 (work/'host-signatures.txt').write_bytes(''.join(line+'\n' for line in sorted(registry-standard)).encode('utf-8'))
 PYHOST
-diff -u <("$LMSCRIPT" --dsl-signatures schema/lmssh.dsl.json --without-std) "$WORK/host-signatures.txt" || fail "host-only registry/compiler signatures differ"
+diff -u <("$LMSCRIPT" --lmcode-signatures schema/lmssh.dsl.json --without-std) "$WORK/host-signatures.txt" || fail "host-only registry/compiler signatures differ"
 ok "host-only schema bytes and --without-std parity retain domain and testing declarations"
 python3 scripts/gen-schema.py "$HOST" | cmp - schema/lmssh.host.json || fail "schema/lmssh.host.json is stale: scripts/gen-schema.py"
 ok "schema/lmssh.dsl.json regenerates identically from the registry"
@@ -100,8 +101,8 @@ expect_contains "$("$WORK/links/ssh" -V 2>&1)" "OpenSSH_10" "argv[0]=ssh dispatc
 expect_contains "$("$WORK/links/ssh-keygen" -l -f "$WORK/orig.pub")" "orig@test" "argv[0]=ssh-keygen dispatch"
 ok "invoked as ssh / ssh-keygen (symlink) it behaves as that program"
 rc=0; "$HOST" >/dev/null 2>&1 || rc=$?; [ "$rc" = 2 ] || fail "usage exit code $rc"
-rc=0; "$HOST" --dsl >/dev/null 2>&1 || rc=$?; [ "$rc" = 2 ] || fail "--dsl without file: $rc"
-rc=0; "$HOST" --dsl --oops x.dslb >/dev/null 2>&1 || rc=$?; [ "$rc" = 2 ] || fail "--dsl with option-like file: $rc"
+rc=0; "$HOST" --lmcode >/dev/null 2>&1 || rc=$?; [ "$rc" = 2 ] || fail "--lmcode without file: $rc"
+rc=0; "$HOST" --lmcode --oops x.dslb >/dev/null 2>&1 || rc=$?; [ "$rc" = 2 ] || fail "--lmcode with option-like file: $rc"
 ok "usage errors exit 2"
 
 # ---- DSL helpers ----
@@ -110,14 +111,14 @@ dsl() { # dsl NAME [host args...] < body  -> compiles and runs; sets RC, OUT, ER
   local name="$1"; shift
   { printf 'p = _dsl_ schema="%s";\n' "$SCHEMA"; cat; printf 'end _dsl_\nsavedsl(p, "%s");\n' "$WORK/$name.dslb"; } > "$WORK/$name.lms"
   "$LMSCRIPT" "$WORK/$name.lms" >"$WORK/compile.out" 2>&1 || { cat "$WORK/compile.out" >&2; fail "compile $name"; }
-  RC=0; "$HOST" "$@" --dsl "$WORK/$name.dslb" >"$WORK/out.txt" 2>"$WORK/err.txt" || RC=$?
+  RC=0; "$HOST" "$@" --lmcode "$WORK/$name.dslb" >"$WORK/out.txt" 2>"$WORK/err.txt" || RC=$?
   OUT="$(cat "$WORK/out.txt")"; ERR="$(cat "$WORK/err.txt")"
 }
 dsl_args() { # dsl_args NAME -- ARGS < body
   local name="$1"; shift; shift
   { printf 'p = _dsl_ schema="%s";\n' "$SCHEMA"; cat; printf 'end _dsl_\nsavedsl(p, "%s");\n' "$WORK/$name.dslb"; } > "$WORK/$name.lms"
   "$LMSCRIPT" "$WORK/$name.lms" >"$WORK/compile.out" 2>&1 || { cat "$WORK/compile.out" >&2; fail "compile $name"; }
-  RC=0; "$HOST" --dsl "$WORK/$name.dslb" -- "$@" >"$WORK/out.txt" 2>"$WORK/err.txt" || RC=$?
+  RC=0; "$HOST" --lmcode "$WORK/$name.dslb" -- "$@" >"$WORK/out.txt" 2>"$WORK/err.txt" || RC=$?
   OUT="$(cat "$WORK/out.txt")"; ERR="$(cat "$WORK/err.txt")"
 }
 
@@ -155,11 +156,11 @@ E2
 [ "$RC" = 4 ] || fail "io.fail must exit 4 (rc=$RC)"; expect_contains "$OUT" "custom verdict A1" "io.fail message"
 ok "io.fail exits 4 with the script's own message"
 
-rc=0; "$HOST" --dsl "$WORK/missing.dslb" >/dev/null 2>&1 || rc=$?; [ "$rc" = 3 ] || fail "missing bytecode rc=$rc"
+rc=0; "$HOST" --lmcode "$WORK/missing.dslb" >/dev/null 2>&1 || rc=$?; [ "$rc" = 3 ] || fail "missing bytecode rc=$rc"
 printf '{"dsl.schema":2,"name":"other","types":{},"functions":{},"context":{}}' > "$WORK/other.schema.json"
 printf 'p = _dsl_ schema="%s";\nwhile (false) {}\nend _dsl_\nsavedsl(p, "%s");\n' "$WORK/other.schema.json" "$WORK/other.dslb" > "$WORK/other.lms"
 "$LMSCRIPT" "$WORK/other.lms" >/dev/null 2>&1
-rc=0; "$HOST" --dsl "$WORK/other.dslb" >"$WORK/o.txt" 2>&1 || rc=$?; [ "$rc" = 3 ] || fail "schema mismatch rc=$rc"
+rc=0; "$HOST" --lmcode "$WORK/other.dslb" >"$WORK/o.txt" 2>&1 || rc=$?; [ "$rc" = 3 ] || fail "schema mismatch rc=$rc"
 ok "missing bytecode and schema-hash mismatch are load errors (exit 3)"
 
 # ---- end to end against a throw-away sshd on 127.0.0.1 ----
@@ -421,7 +422,7 @@ for f in examples/*.lms; do
   (cd examples && "$LMSCRIPT" "$n.lms" "$EXOUT/$n.dslb" >"$WORK/compile.out" 2>&1) || { cat "$WORK/compile.out" >&2; fail "example $n does not compile"; }
 done
 ok "every example compiles against the schema"
-run_ex() { local n="$1"; shift; RC=0; LMSSH_SSH_CONFIG="$WORK/ssh_config" "$HOST" --dsl "$EXOUT/$n.dslb" -- "$@" >"$WORK/out.txt" 2>"$WORK/err.txt" || RC=$?; OUT="$(cat "$WORK/out.txt")"; ERR="$(cat "$WORK/err.txt")"; }
+run_ex() { local n="$1"; shift; RC=0; LMSSH_SSH_CONFIG="$WORK/ssh_config" "$HOST" --lmcode "$EXOUT/$n.dslb" -- "$@" >"$WORK/out.txt" 2>"$WORK/err.txt" || RC=$?; OUT="$(cat "$WORK/out.txt")"; ERR="$(cat "$WORK/err.txt")"; }
 run_ex sign-verify; [ "$RC" = 0 ] || fail "sign-verify rc=$RC $OUT $ERR"
 expect_contains "$OUT" "original verifies: true" "sign-verify"; expect_contains "$OUT" "tampered verifies: false" "sign-verify"
 run_ex issue-cert "$WORK/ca-out"; [ "$RC" = 0 ] || fail "issue-cert rc=$RC $OUT $ERR"

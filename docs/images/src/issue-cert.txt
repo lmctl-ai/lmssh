@@ -1,4 +1,4 @@
-$ lmssh --dsl build/issue-cert.dslb -- ca-output
+$ lmssh --lmcode build/issue-cert.dslb -- ca-output
 CA fingerprint:   SHA256:syJd3hHsoSjy7d3UX/irfFCizFUpvA+JaQtj/bwKfeY
 user fingerprint: SHA256:iXj95buc2u10YELjClmoOUU324UQ51e5/880Dt/Kk1M
 certificate:      ca-output/user-cert.pub

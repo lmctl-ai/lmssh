@@ -13,10 +13,10 @@
 namespace {
 
 const char *kUsage =
-    "usage: lmssh --version | --dsl-schema [--json] | --dsl-signatures | [--dry-run] --dsl FILE [FILE ...] [-- ARG ...]\n"
+    "usage: lmssh --version | --lmcode-schema [--json] | --lmcode-signatures | [--dry-run] --lmcode FILE [FILE ...] [-- ARG ...]\n"
     "       lmssh ssh|sftp|scp|ssh-keygen [OPENSSH OPTIONS ...]   the original OpenSSH clients, unchanged\n"
     "       (also run when this executable is invoked as ssh, sftp, scp or ssh-keygen)\n"
-    "automation: compile an lmscript _dsl_ block against `lmssh --dsl-schema --json`, then run it with --dsl.\n";
+    "automation: compile an lmscript _dsl_ block against `lmssh --lmcode-schema --json`, then run it with --lmcode.\n";
 
 bool is_tool_name(const std::string &name, lmssh_tool &tool) {
   if (name == "ssh") tool = LMSSH_SSH;
@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
     std::cout << "lmssh " LMSSH_VERSION "\n";
     return std::cout ? 0 : 4;
   }
-  if (argc >= 2 && command == "--dsl-schema") {
+  if (argc >= 2 && command == "--lmcode-schema") {
     if (argc == 2) {
       std::cout << lmssh::schema_summary(reg);
       return std::cout ? 0 : 4;
@@ -84,7 +84,7 @@ int main(int argc, char **argv) {
     std::cerr << kUsage;
     return 2;
   }
-  if (argc == 2 && command == "--dsl-signatures") {
+  if (argc == 2 && command == "--lmcode-signatures") {
     for (const auto &signature : reg.signatures()) std::cout << signature << "\n";
     return 0;
   }
@@ -94,7 +94,7 @@ int main(int argc, char **argv) {
     lmssh::set_dry_run(true);
     files_at = 3;
   }
-  if (argc <= files_at || std::string(argv[files_at - 1]) != "--dsl") {
+  if (argc <= files_at || std::string(argv[files_at - 1]) != "--lmcode") {
     std::cerr << kUsage;
     return 2;
   }
