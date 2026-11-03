@@ -1,0 +1,17 @@
+program = _lmcode_ schema="../../../schema/lmssh.host.json";
+let args=io.args();ssh.config(args.at(0));let remote=args.at(1);let work=args.at(2);
+let s = ssh.connect("testhost");
+io.print("wild=" + str(s.exists(remote + "/glob_dir/*.txt")) + str(s.exists(remote + "/glob_dir/victim?.txt")) + str(s.exists(remote + "/glob_dir/victim[a-z].txt")) + str(s.exists(remote + "/glob_dir/brace_{a,b}.txt")));
+s.write(remote + "/glob_dir/star*.txt", "lit-star");
+s.write(remote + "/glob_dir/qmark?.txt", "lit-qmark");
+s.write(remote + "/glob_dir/brack[a-z].txt", "lit-brack");
+s.write(remote + "/glob_dir/brace{a,b}.txt", "lit-brace");
+io.print("lit=" + s.cat(remote + "/glob_dir/star*.txt") + "|" + s.cat(remote + "/glob_dir/qmark?.txt") + "|" + s.cat(remote + "/glob_dir/brack[a-z].txt") + "|" + s.cat(remote + "/glob_dir/brace{a,b}.txt"));
+s.get(remote + "/glob_dir/brack[a-z].txt", work + "/got_brack.txt");
+io.print("got=" + io.read(work + "/got_brack.txt"));
+s.rm(remote + "/glob_dir/star*.txt");
+s.rm(remote + "/glob_dir/qmark?.txt");
+s.rm(remote + "/glob_dir/brack[a-z].txt");
+s.rm(remote + "/glob_dir/brace{a,b}.txt");
+io.print("survivors=" + s.cat(remote + "/glob_dir/victim.txt") + "|" + s.cat(remote + "/glob_dir/brace_a.txt") + "|" + s.cat(remote + "/glob_dir/brace_b.txt"));
+end _lmcode_

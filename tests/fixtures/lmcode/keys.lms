@@ -1,0 +1,15 @@
+program = _lmcode_ schema="../../../schema/lmssh.host.json";
+let dir = io.temp_dir();
+let k = keys.generate(dir + "/k", "ed25519", "kc@test", "pw1");
+io.print(k.type() + "|" + k.comment() + "|" + str(k.bits()));
+keys.change_passphrase(dir + "/k", "pw1", "pw2");
+io.print(k.public_with("pw2"));
+io.print(str(io.exists(dir + "/k.pub")) + str(io.exists(dir + "/none")));
+let l = str_split("a,b,,c", ",");
+io.print(str(l.len()) + l.at(2) + l.at(3) + l.join("+"));
+io.print(str_upper("x") + str(str_to_int("41") + 1) + io.sha256(dir + "/k.pub"));
+report.add("kind", "file", 3, "line1\nline2");
+report.write_text(dir + "/r.txt"); report.write_json(dir + "/r.json");
+io.print(io.read(dir + "/r.txt") + io.read(dir + "/r.json"));
+let again = keys.generate(dir + "/k", "ed25519");
+end _lmcode_

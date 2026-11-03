@@ -1,0 +1,25 @@
+program = _lmcode_ schema="../../../schema/lmssh.host.json";
+let args=io.args();let config=args.at(0);let work=args.at(1);let remote=args.at(2);
+ssh.config(config);
+let s = ssh.connect("testhost");
+let r = s.exec("echo out; echo err >&2; exit 3");
+io.print(f"st={r.status()} ok={r.ok()} out={str_trim(r.stdout())} err={str_trim(r.stderr())}");
+io.print("who=" + s.output("id -un"));
+io.print("stdin=" + str_trim(s.exec("cat", "from-stdin").stdout()));
+io.write(work + "/up.txt", "payload");
+s.put(work + "/up.txt", remote + "/up.txt");
+io.print("cat=" + s.cat(remote + "/up.txt"));
+s.write(remote + "/w.txt", "written");
+io.print("exists=" + str(s.exists(remote + "/w.txt")) + str(s.exists(remote + "/none")));
+s.mkdir(remote + "/d"); s.rename(remote + "/w.txt", remote + "/d/w2.txt");
+io.print("ls=" + s.ls(remote + "/d").join(","));
+s.rm(remote + "/d/w2.txt"); s.rmdir(remote + "/d");
+io.print("gone=" + str(s.exists(remote + "/d")));
+io.mkdir(work + "/tree/sub"); io.write(work + "/tree/a.txt", "A"); io.write(work + "/tree/sub/b.txt", "B");
+s.put_dir(work + "/tree", remote + "/tree");
+s.get_dir(remote + "/tree", work + "/back");
+io.print("back=" + io.read(work + "/back/sub/b.txt"));
+io.print("sftp=" + str_trim(s.sftp("pwd").stdout()));
+io.print("ok?=" + str(s.ok("true")) + str(s.ok("false")));
+s.exec("exit 9").require();
+end _lmcode_

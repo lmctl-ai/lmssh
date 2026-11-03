@@ -1,0 +1,9 @@
+program = _lmcode_ schema="../../../schema/lmssh.host.json";
+let args=io.args();let config=args.at(0);let remote=args.at(1);let work=args.at(2);
+ssh.config(config);
+let s = ssh.connect("testhost");
+s.exec("touch " + remote + "/dry.txt");
+s.write(remote + "/dry.txt", "x");
+io.write(work + "/dry-local.txt", "x");
+io.print("kept going");
+end _lmcode_

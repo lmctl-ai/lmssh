@@ -1,0 +1,5 @@
+program = _lmcode_ schema="../../../schema/lmssh.host.json";
+let args=io.args();ssh.config(args.at(0));let remote=args.at(1);
+let s = ssh.connect("testhost");
+s.exists(remote + "/ok\"\nrm \"" + remote + "/victim.txt");
+end _lmcode_

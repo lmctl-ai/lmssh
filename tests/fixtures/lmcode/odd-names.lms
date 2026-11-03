@@ -1,0 +1,25 @@
+program = _lmcode_ schema="../../../schema/lmssh.host.json";
+let args=io.args();ssh.config(args.at(0));let remote=args.at(1);let work=args.at(2);
+let s = ssh.connect("testhost");
+let d = remote + "/odd dir \"quote\" 'single' #hash";
+s.mkdir(d);
+let f1 = d + "/space \"quote\" 'tick' \\\\back.txt";
+s.write(f1, "odd-1");
+io.print("f1=" + s.cat(f1) + " ex=" + str(s.exists(f1)));
+let f2 = d + "/renamed \"2\" 'b'.txt";
+s.rename(f1, f2);
+io.print("ls=" + s.ls(d).join("|"));
+s.rm(f2);
+s.rmdir(d);
+io.print("d_gone=" + str(s.exists(d)));
+s.mkdir(remote + "/-l");
+s.write(remote + "/-l/-r", "dash-val");
+io.print("dash=" + s.cat(remote + "/-l/-r") + " ls_dash=" + s.ls(remote + "/-l").join(","));
+s.rm(remote + "/-l/-r");
+s.rmdir(remote + "/-l");
+io.write(work + ":colon.txt", "colon-val");
+s.put(work + ":colon.txt", remote + "/remote:colon.txt");
+s.get(remote + "/remote:colon.txt", work + "/back:colon.txt");
+io.print("colon=" + io.read(work + "/back:colon.txt"));
+s.rm(remote + "/remote:colon.txt");
+end _lmcode_

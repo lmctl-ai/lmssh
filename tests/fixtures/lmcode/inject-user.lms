@@ -1,0 +1,3 @@
+program = _lmcode_ schema="../../../schema/lmssh.host.json";
+ssh.user("-oProxyCommand=evil");
+end _lmcode_

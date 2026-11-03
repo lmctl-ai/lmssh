@@ -24,6 +24,8 @@ expect_contains(){ contains "$1" "$2" || fail "$3: expected '$2' in: $1"; }
 
 scripts/sync-sdk.sh --verify >/dev/null || fail "SDK header pin mismatch"
 ok "VM and catalog headers match sdk.lock"
+python3 scripts/merge-std.py schema/lmssh.host.json schema/lmssh.dsl.json
+python3 scripts/verify-lmcode-fixtures.py tests/fixtures/lmcode/manifest.json || fail "lmcode fixture pins differ"
 python3 scripts/test-set-prompt.py
 ok "managed Bash prompt recipe preserves startup data and verifies rendered aliases"
 if [ -z "${SKIP_BUILD:-}" ]; then
@@ -46,6 +48,36 @@ python3 tests/check-host-flags.py schema/lmssh.dsl.json "$HOST" || fail "hard ho
 
 LMSCRIPT="$(scripts/select-compiler.sh)"
 ok "lmcode v6 compiler found: $LMSCRIPT"
+cat > "$WORK/new-language-features.lms" <<EOF
+let options=args_parse([],{});
+program = _lmcode_ schema="$HERE/schema/lmssh.dsl.json";
+let n=1;
+let text=f"count={n}";
+end _lmcode_
+EOF
+NEW_FEATURES=1
+if ! "$LMSCRIPT" --check "$WORK/new-language-features.lms" >"$WORK/features.out" 2>"$WORK/features.err"; then
+  if grep -Eq "undefined function 'args_parse'|undefined name 'f'" "$WORK/features.err"; then
+    NEW_FEATURES=0
+    echo "SKIP args_parse/inner f-string checks: selected published compiler predates mono-main language commits"
+  else
+    cat "$WORK/features.err" >&2; fail "new lmcode/lmscript feature probe"
+  fi
+fi
+for source in examples/*.lms tests/fixtures/lmcode/*.lms scripts/lib/prompt-program.lms; do
+  if [ "$NEW_FEATURES" = 0 ] && { [ "$source" = "examples/deploy-file.lms" ] || [ "$source" = "tests/fixtures/lmcode/session.lms" ]; }; then
+    continue
+  fi
+  "$LMSCRIPT" --check "$source" >"$WORK/check.out" 2>"$WORK/check.err" || { cat "$WORK/check.err" >&2; fail "lmcode source $source does not check"; }
+done
+if [ "$NEW_FEATURES" = 1 ]; then
+  LMCTL_BIN="${LMCTL_BIN:-$(dirname "$LMSCRIPT")/lmctl}" python3 scripts/test-args-parser.py || fail "args_parse parity tests"
+  "$LMSCRIPT" --check scripts/lib/args.lms
+  "$LMSCRIPT" --check scripts/lib/prompt.lms
+  "$LMSCRIPT" --check recipes/set-prompt.lms
+else
+  echo "SKIP args_parse source checks: selected published compiler predates mono-main args_parse"
+fi
 
 # ---- identity, schema, static linking ----
 want_version="$(sed -n 's/^project(lmssh VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
@@ -105,39 +137,20 @@ rc=0; "$HOST" --lmcode >/dev/null 2>&1 || rc=$?; [ "$rc" = 2 ] || fail "--lmcode
 rc=0; "$HOST" --lmcode --oops x.dslb >/dev/null 2>&1 || rc=$?; [ "$rc" = 2 ] || fail "--lmcode with option-like file: $rc"
 ok "usage errors exit 2"
 
-# ---- DSL helpers ----
-SCHEMA="$HERE/schema/lmssh.dsl.json"
-dsl() { # dsl NAME [host args...] < body  -> compiles and runs; sets RC, OUT, ERR
+# ---- pinned lmcode fixture runner ----
+lmcode() { # lmcode NAME [SCRIPT_ARGS ...] -> sets RC, OUT, ERR
   local name="$1"; shift
-  { printf 'p = _dsl_ schema="%s";\n' "$SCHEMA"; cat; printf 'end _dsl_\nsavedsl(p, "%s");\n' "$WORK/$name.dslb"; } > "$WORK/$name.lms"
-  "$LMSCRIPT" "$WORK/$name.lms" >"$WORK/compile.out" 2>&1 || { cat "$WORK/compile.out" >&2; fail "compile $name"; }
-  RC=0; "$HOST" "$@" --lmcode "$WORK/$name.dslb" >"$WORK/out.txt" 2>"$WORK/err.txt" || RC=$?
+  RC=0; "$HOST" --lmcode "$HERE/tests/fixtures/lmcode/$name.dslb" -- "$@" >"$WORK/out.txt" 2>"$WORK/err.txt" || RC=$?
   OUT="$(cat "$WORK/out.txt")"; ERR="$(cat "$WORK/err.txt")"
 }
-dsl_args() { # dsl_args NAME -- ARGS < body
-  local name="$1"; shift; shift
-  { printf 'p = _dsl_ schema="%s";\n' "$SCHEMA"; cat; printf 'end _dsl_\nsavedsl(p, "%s");\n' "$WORK/$name.dslb"; } > "$WORK/$name.lms"
-  "$LMSCRIPT" "$WORK/$name.lms" >"$WORK/compile.out" 2>&1 || { cat "$WORK/compile.out" >&2; fail "compile $name"; }
-  RC=0; "$HOST" --lmcode "$WORK/$name.dslb" -- "$@" >"$WORK/out.txt" 2>"$WORK/err.txt" || RC=$?
+lmcode_dry() { # lmcode_dry NAME [SCRIPT_ARGS ...]
+  local name="$1"; shift
+  RC=0; "$HOST" --dry-run --lmcode "$HERE/tests/fixtures/lmcode/$name.dslb" -- "$@" >"$WORK/out.txt" 2>"$WORK/err.txt" || RC=$?
   OUT="$(cat "$WORK/out.txt")"; ERR="$(cat "$WORK/err.txt")"
 }
 
-# ---- no-network DSL: keys, io, strings, report ----
-dsl keys <<E2
-let dir = io.temp_dir();
-let k = keys.generate(dir + "/k", "ed25519", "kc@test", "pw1");
-io.print(k.type() + "|" + k.comment() + "|" + str(k.bits()));
-keys.change_passphrase(dir + "/k", "pw1", "pw2");
-io.print(k.public_with("pw2"));
-io.print(str(io.exists(dir + "/k.pub")) + str(io.exists(dir + "/none")));
-let l = str_split("a,b,,c", ",");
-io.print(str(l.len()) + l.at(2) + l.at(3) + l.join("+"));
-io.print(str_upper("x") + str(str_to_int("41") + 1) + io.sha256(dir + "/k.pub"));
-report.add("kind", "file", 3, "line1\nline2");
-report.write_text(dir + "/r.txt"); report.write_json(dir + "/r.json");
-io.print(io.read(dir + "/r.txt") + io.read(dir + "/r.json"));
-let again = keys.generate(dir + "/k", "ed25519");
-E2
+# ---- no-network lmcode: keys, io, strings, report ----
+lmcode keys
 [ "$RC" = 3 ] || fail "overwriting a key must be a run error (rc=$RC out=$OUT)"
 expect_contains "$OUT" "ed25519|kc@test|256" "key facts"
 expect_contains "$OUT" "ssh-ed25519 " "public key"
@@ -150,17 +163,12 @@ expect_contains "$OUT" "refusing to overwrite" "no clobber"
 expect_contains "$OUT" '"ok": false' "error result line"
 ok "keys / io / strings / report work; an existing key is never overwritten"
 
-dsl_args sigs -- A1 <<E2
-io.fail("custom verdict " + io.args().at(0));
-E2
+lmcode sigs A1
 [ "$RC" = 4 ] || fail "io.fail must exit 4 (rc=$RC)"; expect_contains "$OUT" "custom verdict A1" "io.fail message"
 ok "io.fail exits 4 with the script's own message"
 
 rc=0; "$HOST" --lmcode "$WORK/missing.dslb" >/dev/null 2>&1 || rc=$?; [ "$rc" = 3 ] || fail "missing bytecode rc=$rc"
-printf '{"dsl.schema":2,"name":"other","types":{},"functions":{},"context":{}}' > "$WORK/other.schema.json"
-printf 'p = _dsl_ schema="%s";\nwhile (false) {}\nend _dsl_\nsavedsl(p, "%s");\n' "$WORK/other.schema.json" "$WORK/other.dslb" > "$WORK/other.lms"
-"$LMSCRIPT" "$WORK/other.lms" >/dev/null 2>&1
-rc=0; "$HOST" --lmcode "$WORK/other.dslb" >"$WORK/o.txt" 2>&1 || rc=$?; [ "$rc" = 3 ] || fail "schema mismatch rc=$rc"
+rc=0; "$HOST" --lmcode "$HERE/tests/fixtures/lmcode/other-schema.dslb" >"$WORK/o.txt" 2>&1 || rc=$?; [ "$rc" = 3 ] || fail "schema mismatch rc=$rc"
 ok "missing bytecode and schema-hash mismatch are load errors (exit 3)"
 
 # ---- end to end against a throw-away sshd on 127.0.0.1 ----
@@ -188,6 +196,7 @@ E2
   mkdir -p /run/sshd 2>/dev/null || true
   "$SSHD" -f "$WORK/sshd_config" -D -e >"$WORK/sshd.log" 2>&1 &
   SSHD_PID=$!
+  ps -p "$SSHD_PID" -o args= | grep -F -- "$WORK/sshd_config" >/dev/null || fail "started sshd pid identity did not match the owned config"
   for _ in $(seq 1 50); do (exec 3<>"/dev/tcp/127.0.0.1/$PORT") 2>/dev/null && { E2E=1; break; }; sleep 0.1; done
   [ "$E2E" = 1 ] || { echo "sshd did not start: $(cat "$WORK/sshd.log")" >&2; [ -z "${LMSSH_REQUIRE_SSHD:-}" ] || fail "sshd unusable"; }
 elif [ -n "${LMSSH_REQUIRE_SSHD:-}" ]; then fail "no sshd binary"; fi
@@ -215,30 +224,7 @@ E2
   echo cli-scp > "$WORK/cli.txt"; "$HOST" scp -q -F "$WORK/ssh_config" "$WORK/cli.txt" testhost:"$R/cli.txt"; [ "$(cat "$R/cli.txt")" = cli-scp ] || fail "lmssh scp"
   ok "original ssh / sftp / scp options work against the test server (scp and sftp use this image as their ssh)"
 
-  dsl session <<E2
-ssh.config("$WORK/ssh_config");
-let s = ssh.connect("testhost");
-let r = s.exec("echo out; echo err >&2; exit 3");
-io.print("st=" + str(r.status()) + " ok=" + str(r.ok()) + " out=" + str_trim(r.stdout()) + " err=" + str_trim(r.stderr()));
-io.print("who=" + s.output("id -un"));
-io.print("stdin=" + str_trim(s.exec("cat", "from-stdin").stdout()));
-io.write("$WORK/up.txt", "payload");
-s.put("$WORK/up.txt", "$R/up.txt");
-io.print("cat=" + s.cat("$R/up.txt"));
-s.write("$R/w.txt", "written");
-io.print("exists=" + str(s.exists("$R/w.txt")) + str(s.exists("$R/none")));
-s.mkdir("$R/d"); s.rename("$R/w.txt", "$R/d/w2.txt");
-io.print("ls=" + s.ls("$R/d").join(","));
-s.rm("$R/d/w2.txt"); s.rmdir("$R/d");
-io.print("gone=" + str(s.exists("$R/d")));
-io.mkdir("$WORK/tree/sub"); io.write("$WORK/tree/a.txt", "A"); io.write("$WORK/tree/sub/b.txt", "B");
-s.put_dir("$WORK/tree", "$R/tree");
-s.get_dir("$R/tree", "$WORK/back");
-io.print("back=" + io.read("$WORK/back/sub/b.txt"));
-io.print("sftp=" + str_trim(s.sftp("pwd").stdout()));
-io.print("ok?=" + str(s.ok("true")) + str(s.ok("false")));
-s.exec("exit 9").require();
-E2
+  lmcode session "$WORK/ssh_config" "$WORK" "$R"
   [ "$RC" = 3 ] || fail "require() on a failing command must be a run error (rc=$RC err=$ERR out=$OUT)"
   expect_contains "$OUT" "st=3 ok=false out=out err=err" "exec result"
   expect_contains "$OUT" "who=$ME" "output"
@@ -254,17 +240,7 @@ E2
   [ "$(cat "$R/up.txt")" = payload ] || fail "remote file content"
   ok "Session exec/output/put/get/cat/write/ls/exists/mkdir/rename/rm/put_dir/get_dir/sftp over a real sshd"
 
-  dsl fleet <<E2
-ssh.config("$WORK/ssh_config");
-let hosts = str_list().add("testhost").add("testhost").add("testhost");
-ssh.parallel(3);
-let t0 = io.now();
-let rs = ssh.each(hosts, "sleep 1; echo \$\$");
-io.print("n=" + str(rs.len()) + " failed=" + str(rs.failed()) + " secs=" + str(io.now() - t0));
-let bad = ssh.each(str_list().add("testhost"), "exit 5");
-io.print("bad failed=" + str(bad.failed()));
-bad.require_all();
-E2
+  lmcode fleet "$WORK/ssh_config"
   [ "$RC" = 3 ] || fail "require_all must fail (rc=$RC)"
   expect_contains "$OUT" "n=3 failed=0" "each() results"
   secs="$(printf '%s' "$OUT" | sed -n 's/.*secs=\([0-9][0-9]*\).*/\1/p')"
@@ -272,25 +248,7 @@ E2
   expect_contains "$OUT" "bad failed=1" "failed()"
   ok "Ssh.each runs commands in parallel and reports failures"
 
-  dsl options <<E2
-ssh.known_hosts("$WORK/known_hosts2").strict_host_key("accept-new").connect_timeout(10).port($PORT).user("$ME");
-let a = ssh.connect("127.0.0.1").identity("$WORK/id_client");
-io.print("direct=" + str_trim(a.output("echo d")));
-let j = ssh.connect("127.0.0.1").config("$WORK/ssh_config").jump("localhost:$PORT");
-io.print("jump=" + str_trim(j.output("echo j")));
-let m = ssh.connect("127.0.0.1").identity("$WORK/id_client").reuse(true);
-io.print("reuse=" + str_trim(m.output("echo m1")) + str_trim(m.output("echo m2")));
-m.close();
-let t = ssh.connect("127.0.0.1").identity("$WORK/id_client").timeout(2);
-let r = t.exec("sleep 20");
-io.print("timeout=" + str(r.timed_out()) + str(r.ok()) + str(r.status()));
-let e = ssh.connect("127.0.0.1").identity("$WORK/id_enc").password("sekret");
-io.print("askpass=" + str_trim(e.output("echo with-passphrase")));
-let w = ssh.connect("127.0.0.1").identity("$WORK/id_enc").password("wrong");
-io.print("wrong=" + str(w.exec("true").ok()));
-let n = ssh.connect("127.0.0.1").strict_host_key("yes").known_hosts("$WORK/empty_hosts");
-io.print("unknown host key refused=" + str(!n.exec("true").ok()));
-E2
+  lmcode options "$WORK/known_hosts2" "$PORT" "$ME" "$WORK/id_client" "$WORK/ssh_config" "$WORK/id_enc" "$WORK/empty_hosts"
   [ "$RC" = 0 ] || fail "options script failed rc=$RC out=$OUT err=$ERR"
   expect_contains "$OUT" "direct=d" "port/identity/user/known_hosts options"
   expect_contains "$OUT" "jump=j" "ProxyJump through this image"
@@ -307,14 +265,7 @@ E2
   ok "port/identity/jump/reuse/timeout/passphrase options work; the private work directory is removed"
 
   rm -f "$R/dry.txt"
-  dsl dry --dry-run <<E2
-ssh.config("$WORK/ssh_config");
-let s = ssh.connect("testhost");
-s.exec("touch $R/dry.txt");
-s.write("$R/dry.txt", "x");
-io.write("$WORK/dry-local.txt", "x");
-io.print("kept going");
-E2
+  lmcode_dry dry "$WORK/ssh_config" "$R" "$WORK"
   [ "$RC" = 0 ] || fail "dry-run rc=$RC err=$ERR"
   expect_contains "$ERR" "[dry-run] ssh " "dry-run lists the ssh command"
   [ ! -e "$R/dry.txt" ] && [ ! -e "$WORK/dry-local.txt" ] || fail "dry-run changed something"
@@ -322,34 +273,20 @@ E2
 
   # ---- security regressions: control-char injection, glob neutralization, odd legal names ----
   echo "keep" > "$R/victim.txt"
-  dsl inject_nl <<E2
-ssh.config("$WORK/ssh_config");
-let s = ssh.connect("testhost");
-s.exists("$R/ok\"\nrm \"$R/victim.txt");
-E2
+  lmcode inject-nl "$WORK/ssh_config" "$R"
   [ "$RC" = 3 ] || fail "newline injection must fail with rc=3 (got $RC: $OUT $ERR)"
   expect_contains "$OUT" "contains a control character" "newline injection error"
   [ -f "$R/victim.txt" ] || fail "newline injection removed victim.txt"
 
-  dsl inject_cr <<E2
-ssh.config("$WORK/ssh_config");
-let s = ssh.connect("testhost");
-s.rm("$R/ok\rrm $R/victim.txt");
-E2
+  lmcode inject-cr "$WORK/ssh_config" "$R"
   [ "$RC" = 3 ] || fail "CR injection must fail with rc=3 (got $RC: $OUT $ERR)"
   expect_contains "$OUT" "contains a control character" "CR injection error"
 
-  dsl inject_put <<E2
-ssh.config("$WORK/ssh_config");
-let s = ssh.connect("testhost");
-s.write("$R/ok\nbad.txt", "x");
-E2
+  lmcode inject-put "$WORK/ssh_config" "$R"
   [ "$RC" = 3 ] || fail "write newline path must fail with rc=3 (got $RC: $OUT $ERR)"
   expect_contains "$OUT" "contains a control character" "write newline error"
 
-  dsl inject_user <<E2
-ssh.user("-oProxyCommand=evil");
-E2
+  lmcode inject-user
   [ "$RC" = 3 ] || fail "option-like user must fail with rc=3 (got $RC: $OUT $ERR)"
   ok "control-character and option-injection attempts are rejected before invoking OpenSSH"
 
@@ -357,23 +294,7 @@ E2
   printf 'victim-data' > "$R/glob_dir/victim.txt"
   printf 'brace-a' > "$R/glob_dir/brace_a.txt"
   printf 'brace-b' > "$R/glob_dir/brace_b.txt"
-  dsl glob_check <<E2
-ssh.config("$WORK/ssh_config");
-let s = ssh.connect("testhost");
-io.print("wild=" + str(s.exists("$R/glob_dir/*.txt")) + str(s.exists("$R/glob_dir/victim?.txt")) + str(s.exists("$R/glob_dir/victim[a-z].txt")) + str(s.exists("$R/glob_dir/brace_{a,b}.txt")));
-s.write("$R/glob_dir/star*.txt", "lit-star");
-s.write("$R/glob_dir/qmark?.txt", "lit-qmark");
-s.write("$R/glob_dir/brack[a-z].txt", "lit-brack");
-s.write("$R/glob_dir/brace{a,b}.txt", "lit-brace");
-io.print("lit=" + s.cat("$R/glob_dir/star*.txt") + "|" + s.cat("$R/glob_dir/qmark?.txt") + "|" + s.cat("$R/glob_dir/brack[a-z].txt") + "|" + s.cat("$R/glob_dir/brace{a,b}.txt"));
-s.get("$R/glob_dir/brack[a-z].txt", "$WORK/got_brack.txt");
-io.print("got=" + io.read("$WORK/got_brack.txt"));
-s.rm("$R/glob_dir/star*.txt");
-s.rm("$R/glob_dir/qmark?.txt");
-s.rm("$R/glob_dir/brack[a-z].txt");
-s.rm("$R/glob_dir/brace{a,b}.txt");
-io.print("survivors=" + s.cat("$R/glob_dir/victim.txt") + "|" + s.cat("$R/glob_dir/brace_a.txt") + "|" + s.cat("$R/glob_dir/brace_b.txt"));
-E2
+  lmcode glob-check "$WORK/ssh_config" "$R" "$WORK"
   [ "$RC" = 0 ] || fail "glob_check failed rc=$RC out=$OUT err=$ERR"
   expect_contains "$OUT" "wild=falsefalsefalsefalse" "globs and braces do not expand on exists/ls"
   expect_contains "$OUT" "lit=lit-star|lit-qmark|lit-brack|lit-brace" "literal glob/brace filenames round-trip via write/cat"
@@ -381,31 +302,7 @@ E2
   expect_contains "$OUT" "survivors=victim-data|brace-a|brace-b" "rm on literal glob/brace filenames leaves matching siblings untouched"
   ok "glob (* ? [) and brace ({a,b}) characters are neutralized across sftp and scp operations"
 
-  dsl odd_names <<E2
-ssh.config("$WORK/ssh_config");
-let s = ssh.connect("testhost");
-let d = "$R/odd dir \"quote\" 'single' #hash";
-s.mkdir(d);
-let f1 = d + "/space \"quote\" 'tick' \\\\back.txt";
-s.write(f1, "odd-1");
-io.print("f1=" + s.cat(f1) + " ex=" + str(s.exists(f1)));
-let f2 = d + "/renamed \"2\" 'b'.txt";
-s.rename(f1, f2);
-io.print("ls=" + s.ls(d).join("|"));
-s.rm(f2);
-s.rmdir(d);
-io.print("d_gone=" + str(s.exists(d)));
-s.mkdir("$R/-l");
-s.write("$R/-l/-r", "dash-val");
-io.print("dash=" + s.cat("$R/-l/-r") + " ls_dash=" + s.ls("$R/-l").join(","));
-s.rm("$R/-l/-r");
-s.rmdir("$R/-l");
-io.write("$WORK/local:colon.txt", "colon-val");
-s.put("$WORK/local:colon.txt", "$R/remote:colon.txt");
-s.get("$R/remote:colon.txt", "$WORK/back:colon.txt");
-io.print("colon=" + io.read("$WORK/back:colon.txt"));
-s.rm("$R/remote:colon.txt");
-E2
+  lmcode odd-names "$WORK/ssh_config" "$R" "$WORK"
   [ "$RC" = 0 ] || fail "odd_names failed rc=$RC out=$OUT err=$ERR"
   expect_contains "$OUT" "f1=odd-1 ex=true" "spaces/quotes/backslash write+cat+exists"
   expect_contains "$OUT" "ls=renamed \"2\" 'b'.txt" "rename+ls on odd directory and file"
@@ -415,14 +312,13 @@ E2
   ok "odd but legal names (spaces, quotes, backslashes, #hash, leading '-', ':') work across put/get/write/cat/ls/mkdir/rename/rm/rmdir"
 fi
 
-# ---- examples ----
-EXOUT="$WORK/examples"; mkdir -p "$EXOUT"
-for f in examples/*.lms; do
-  n="$(basename "$f" .lms)"
-  (cd examples && "$LMSCRIPT" "$n.lms" "$EXOUT/$n.dslb" >"$WORK/compile.out" 2>&1) || { cat "$WORK/compile.out" >&2; fail "example $n does not compile"; }
+# ---- compile-only examples ----
+for f in examples/*.lms scripts/lib/prompt-program.lms tests/fixtures/lmcode/*.lms; do
+  if [ "$NEW_FEATURES" = 0 ] && { [ "$f" = "examples/deploy-file.lms" ] || [ "$f" = "tests/fixtures/lmcode/session.lms" ]; }; then continue; fi
+  "$LMSCRIPT" --check "$f" >"$WORK/compile.out" 2>&1 || { cat "$WORK/compile.out" >&2; fail "lmcode source $f does not check"; }
 done
-ok "every example compiles against the schema"
-run_ex() { local n="$1"; shift; RC=0; LMSSH_SSH_CONFIG="$WORK/ssh_config" "$HOST" --lmcode "$EXOUT/$n.dslb" -- "$@" >"$WORK/out.txt" 2>"$WORK/err.txt" || RC=$?; OUT="$(cat "$WORK/out.txt")"; ERR="$(cat "$WORK/err.txt")"; }
+ok "compile-only lmcode sources check against the merged schema; compiled bytes are pinned"
+run_ex() { local n="$1"; shift; RC=0; LMSSH_SSH_CONFIG="$WORK/ssh_config" "$HOST" --lmcode "$HERE/examples/compiled/$n.dslb" -- "$@" >"$WORK/out.txt" 2>"$WORK/err.txt" || RC=$?; OUT="$(cat "$WORK/out.txt")"; ERR="$(cat "$WORK/err.txt")"; }
 run_ex sign-verify; [ "$RC" = 0 ] || fail "sign-verify rc=$RC $OUT $ERR"
 expect_contains "$OUT" "original verifies: true" "sign-verify"; expect_contains "$OUT" "tampered verifies: false" "sign-verify"
 run_ex issue-cert "$WORK/ca-out"; [ "$RC" = 0 ] || fail "issue-cert rc=$RC $OUT $ERR"

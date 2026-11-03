@@ -1,0 +1,20 @@
+program = _lmcode_ schema="../../../schema/lmssh.host.json";
+let args=io.args();
+ssh.known_hosts(args.at(0)).strict_host_key("accept-new").connect_timeout(10).port(str_to_int(args.at(1))).user(args.at(2));
+let a = ssh.connect("127.0.0.1").identity(args.at(3));
+io.print("direct=" + str_trim(a.output("echo d")));
+let j = ssh.connect("127.0.0.1").config(args.at(4)).jump("localhost:" + args.at(1));
+io.print("jump=" + str_trim(j.output("echo j")));
+let m = ssh.connect("127.0.0.1").identity(args.at(3)).reuse(true);
+io.print("reuse=" + str_trim(m.output("echo m1")) + str_trim(m.output("echo m2")));
+m.close();
+let t = ssh.connect("127.0.0.1").identity(args.at(3)).timeout(2);
+let r = t.exec("sleep 20");
+io.print("timeout=" + str(r.timed_out()) + str(r.ok()) + str(r.status()));
+let e = ssh.connect("127.0.0.1").identity(args.at(5)).password("sekret");
+io.print("askpass=" + str_trim(e.output("echo with-passphrase")));
+let w = ssh.connect("127.0.0.1").identity(args.at(5)).password("wrong");
+io.print("wrong=" + str(w.exec("true").ok()));
+let n = ssh.connect("127.0.0.1").strict_host_key("yes").known_hosts(args.at(6));
+io.print("unknown host key refused=" + str(!n.exec("true").ok()));
+end _lmcode_

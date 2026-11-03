@@ -1,0 +1,3 @@
+program = _lmcode_ schema="other-schema.json";
+while (false) {}
+end _lmcode_

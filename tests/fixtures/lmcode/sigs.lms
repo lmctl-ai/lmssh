@@ -1,0 +1,3 @@
+program = _lmcode_ schema="../../../schema/lmssh.host.json";
+io.fail("custom verdict " + io.args().at(0));
+end _lmcode_

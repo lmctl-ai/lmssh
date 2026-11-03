@@ -1,0 +1,11 @@
+program = _lmcode_ schema="../../../schema/lmssh.host.json";
+ssh.config(io.args().at(0));
+let hosts = str_list().add("testhost").add("testhost").add("testhost");
+ssh.parallel(3);
+let t0 = io.now();
+let rs = ssh.each(hosts, "sleep 1; echo $$");
+io.print("n=" + str(rs.len()) + " failed=" + str(rs.failed()) + " secs=" + str(io.now() - t0));
+let bad = ssh.each(str_list().add("testhost"), "exit 5");
+io.print("bad failed=" + str(bad.failed()));
+bad.require_all();
+end _lmcode_
