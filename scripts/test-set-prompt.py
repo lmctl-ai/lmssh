@@ -22,7 +22,7 @@ def main():
         print("SKIP prompt recipe test: Bash 4.4+ required for prompt rendering verification")
         return
     with tempfile.TemporaryDirectory(prefix="lmssh-prompt-") as td:
-        home = Path(td)
+        home = Path(td).resolve()
         (home / "repos").mkdir()
         canary = "DO_NOT_PRINT_THIS_TEST_SECRET"
         original = f"# existing startup\nexport PRIVATE_TEST_KEY='{canary}'\nPS1='old>'\n".encode()
@@ -74,7 +74,7 @@ with tempfile.TemporaryDirectory(dir=os.environ["HOME"]) as work:
         assert not (home / ".local/state/lmssh/prompt-backups").exists()
         changed = run(apply=True)
         assert changed["status"] == "updated"
-        assert changed["rendered_prompt"] == "t4g2:~/repos" + ("# " if os.geteuid() == 0 else "$ ")
+        assert changed["rendered_prompt"] == "t4g2:~/repos" + ("# " if os.geteuid() == 0 else "$ "), changed["rendered_prompt"]
         assert b"PRIVATE_TEST_KEY" in rc.read_bytes()
         assert rc.read_bytes().startswith(original.rstrip(b"\n"))
         backup = Path(changed["backup"])

@@ -9,7 +9,7 @@
     "scripts/lib/prompt.lms": "7bc1b5292aee9700acd33b36ecdeb99a8078642c6140ce4de1e97aef2b48fcfc",
     "scripts/lib/prompt-program.lms": "7f47012bf209fd40027538d076eada215d0f90a1250e09b0a60eac17e5a5d581",
     "scripts/test-args-parser.py": "5ddce06476aec74c95f263a95ea2f94ad9c35beaa22bbfc3c5833f72661e8029",
-    "scripts/test-set-prompt.py": "fcd798eadb2cf979732f6de902b8cd87cfacdcec0745c7aaeade223879199caf",
+    "scripts/test-set-prompt.py": "9f6388d503ad41c6f7a7302265c459d2825bca509bcc0c7691a3ec670e99ca9c",
     "recipes/set-prompt.lms": "7a67f6c8625622c027fcd9fee5f62df3d540db2151c7a709ea3c7f2ed7e51398",
     "tests/fixtures/lmcode/README.md": "ea034aad8bba0ddbdcd510c283359be83f4980de1d2b2816a1f6558859298e18",
     "tests/fixtures/lmcode/other-schema.json": "006b973bb1f8932d35aa303347a4be6e14447d3dcd8e7ead3c16103a82e70634",
