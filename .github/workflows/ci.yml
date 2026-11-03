@@ -55,7 +55,9 @@ jobs:
 
       - name: toolchain (macos)
         if: runner.os == 'macOS' && env.ONLY_OK == 'true'
-        run: brew install ninja coreutils autoconf automake openssl@3
+        run: |
+          brew install ninja coreutils autoconf automake openssl@3 bash
+          echo "$(brew --prefix bash)/bin" >> "$GITHUB_PATH"
 
       - name: lmscript compiler (private npm prefix)
         if: env.ONLY_OK == 'true'
