@@ -1,8 +1,8 @@
-# DSL API reference
+# lmcode API reference
 
 The schema is `schema/lmssh.dsl.json`, generated from the registry by `scripts/gen-schema.py` (the registry in `cpp/host.cpp` is the source of truth; `test.sh` regenerates it and diffs, and diffs `lmssh --lmcode-signatures` against the compiler). `lmssh --lmcode-schema` prints every signature; `--lmcode-schema --json` prints the schema bytes the VM binds bytecode to.
 
-Contexts (global variables in a `_dsl_` block): `ssh: Ssh`, `keys: Keys`, `io: Io`, `report: Report`. The catalog `str_*` functions from lmcode-cpp (`str_trim`, `str_find`, `str_replace`, `str_starts_with`, `str_to_int`, …) are registered, plus `str_list()` and `str_split(s, sep)`.
+Contexts (global variables in an `_lmcode_` program): `ssh: Ssh`, `keys: Keys`, `io: Io`, `report: Report`. The catalog `str_*` functions from lmcode-cpp (`str_trim`, `str_find`, `str_replace`, `str_starts_with`, `str_to_int`, …) are registered, plus `str_list()` and `str_split(s, sep)`.
 
 ## Errors and exit codes
 

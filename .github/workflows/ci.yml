@@ -57,7 +57,7 @@ jobs:
         if: runner.os == 'macOS' && env.ONLY_OK == 'true'
         run: brew install ninja coreutils autoconf automake openssl@3
 
-      - name: lmscript compiler (npm @lmctl-ai/lmctl, DSL v5)
+      - name: lmscript compiler (private npm prefix)
         if: env.ONLY_OK == 'true'
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
@@ -66,9 +66,10 @@ jobs:
       - name: install and probe the compiler
         if: env.ONLY_OK == 'true'
         run: |
-          npm i -g @lmctl-ai/lmctl@0.2.420
+          npm install --prefix "$RUNNER_TEMP/lmctl" --no-save --package-lock=false @lmctl-ai/lmctl@latest
+          export PATH="$RUNNER_TEMP/lmctl/node_modules/.bin:$PATH"
           scripts/select-compiler.sh | tee compiler.txt
-          grep -q lmscript compiler.txt || { echo "no v5 compiler available"; exit 1; }
+          grep -q lmscript compiler.txt || { echo "no current lmscript compiler available"; exit 1; }
 
       # Linux: fully static musl build inside Alpine; the result runs on the runner as-is.
       - name: build (linux, static musl)

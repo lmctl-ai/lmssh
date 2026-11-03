@@ -9,7 +9,7 @@ endif()
 option(LMSSH_FULL_STATIC "Link the complete executable statically" ON)
 set(OPENSSL_DIR "/usr" CACHE PATH "Prefix with include/openssl and the static libcrypto.a")
 
-# ---- DSL schema embedded into the executable (also what lmscript compiles against) ----
+# ---- lmcode schema embedded into the executable (also what lmscript compiles against) ----
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 set(LMSSH_HOST_SCHEMA "${CMAKE_CURRENT_SOURCE_DIR}/schema/lmssh.host.json")
 set(LMSSH_SCHEMA "${CMAKE_CURRENT_SOURCE_DIR}/schema/lmssh.dsl.json")

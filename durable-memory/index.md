@@ -1,6 +1,6 @@
 # lmssh durable memory
 
-`lmssh` is a static, dependency-free lmscript `_dsl_` host embedding OpenSSH client programs (ssh, scp, sftp) and `lmcode-cpp` for programmatic remote automation, secure copy, and multiplexed sessions.
+`lmssh` is a static, dependency-free lmcode host embedding OpenSSH client programs (ssh, scp, sftp) and `lmcode-cpp` for programmatic remote automation, secure copy, and multiplexed sessions.
 Repository: https://github.com/lmctl-ai/lmssh.
 
 ## 60-second takeover
@@ -20,7 +20,7 @@ cmake --build build --parallel 4      # Build binary at build/lmssh
 | [01-purpose-and-place.md](01-purpose-and-place.md) | Scope, OpenSSH client integration, and script execution boundary |
 | [02-architecture.md](02-architecture.md) | Single binary image containing ssh, scp, and sftp dispatch |
 | [03-building-openssh.md](03-building-openssh.md) | Building OpenSSH static archives, musl vs glibc, build flags |
-| [04-api.md](04-api.md) | DSL surface, session context, commands, and error handling |
+| [04-api.md](04-api.md) | lmcode surface, session context, commands, and error handling |
 | [05-testing.md](05-testing.md) | Integration test suite, throw-away sshd daemon, and security tests |
 | [06-ci-release.md](06-ci-release.md) | GitHub Actions matrix, platform targets, and release procedure |
 | [07-open-items.md](07-open-items.md) | Backlog, Windows port ideas, agent forwarding, FIDO support |
@@ -36,7 +36,7 @@ scripts/sync-sdk.sh                   # Refetches pinned headers and verifies sh
 ## Adding an example or function
 
 ### Adding an example
-1. Create `examples/<name>.lms` using `_dsl_ cli="lmssh" install="github:lmctl-ai/lmssh@latest"`.
+1. Create `examples/<name>.lms` with an `_lmcode_` program bound to the lmssh schema.
 2. Run script: `build/lmssh run examples/<name>.lms` or via `lmscript`.
 3. Add the example to `./test.sh` test run list.
 4. Add terminal output image to `docs/images/<name>.png` and update `README.md` demo table with `lmctl autorun` command.

@@ -1,0 +1,20 @@
+// Low-level compiler-library tool for compile-only lmssh examples and tests.
+import fs from 'node:fs';
+import path from 'node:path';
+import {pathToFileURL} from 'node:url';
+const [input,output]=process.argv.slice(2);
+if(!input||!output)throw Error('usage: compile-lmcode-fixture.mjs SOURCE.lms OUTPUT.dslb');
+if(!process.env.LMCODE_COMPILER_MODULE)throw Error('set LMCODE_COMPILER_MODULE to mono lmscript/dist/dsl.js');
+const source=fs.readFileSync(input,'utf8');
+const header=/^[A-Za-z_][A-Za-z0-9_]*\s*=\s*_lmcode_ schema="([^"]+)";\r?\n/m.exec(source);
+if(!header)throw Error('source must contain one _lmcode_ block with a literal schema file');
+const start=header.index+header[0].length,close=source.indexOf('\nend _lmcode_',start);
+if(close<0)throw Error('lmcode block is not closed');
+const body=source.slice(start,close).replace(/\r\n/g,'\n');
+const schema=path.resolve(path.dirname(input),header[1]);
+const headerLine=source.slice(0,header.index).split(/\r?\n/).length;
+const sourceMapper=(lineIndex,column)=>({line:headerLine+1+lineIndex,column});
+const {parseDslSchema,compileDsl}=await import(pathToFileURL(process.env.LMCODE_COMPILER_MODULE).href);
+const compiled=compileDsl(body.split('\n'),parseDslSchema(fs.readFileSync(schema),schema),sourceMapper);
+fs.mkdirSync(path.dirname(path.resolve(output)),{recursive:true});
+fs.writeFileSync(output,compiled.bytes);

@@ -10,10 +10,10 @@ import subprocess
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
-source = (ROOT / "scripts/lib/prompt.lms").read_text()
-match = re.search(r'let prompt_python=join\((\[.*?\]),"\\n"\);', source, re.S)
+source = (ROOT / "scripts/lib/prompt-program.lms").read_text()
+match = re.search(r'let prompt_python\s*=\s*<<PROMPT_PYTHON;\r?\n(.*?)\r?\nPROMPT_PYTHON\s*$', source, re.S | re.M)
 assert match
-payload = "\n".join(json.loads(match.group(1)))
+payload = match.group(1)
 compile(payload, "prompt payload", "exec")
 
 

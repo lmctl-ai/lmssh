@@ -1,6 +1,6 @@
 # lmssh
 
-**lmssh is one static executable that carries OpenSSH's `ssh`, `sftp`, `scp` and `ssh-keygen` clients and lets scripts drive them.** It is built for automation: write an [lmscript](https://lmctl.com/tools/lmscript/skill.html) `_dsl_` block that runs commands on a fleet, moves files, rotates keys or signs artifacts, compile it to bytecode, and run it with `lmssh --lmcode`. No OpenSSH installation, no libraries, nothing else to deploy.
+**lmssh is one static executable that carries OpenSSH's `ssh`, `sftp`, `scp` and `ssh-keygen` clients and lets scripts drive them.** It is built for automation: write an [lmscript](https://lmctl.com/tools/lmscript/skill.html) `_lmcode_` program that runs commands on a fleet, moves files, rotates keys or signs artifacts, compile it with the compiler-library fixture tool, and run it with `lmssh --lmcode`. No OpenSSH installation, no libraries, nothing else to deploy.
 
 [![CI](https://github.com/lmctl-ai/lmssh/actions/workflows/ci.yml/badge.svg)](https://github.com/lmctl-ai/lmssh/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -20,14 +20,13 @@ Invoked through a symlink named `ssh`, `sftp`, `scp` or `ssh-keygen`, the execut
 
 `lmssh` 0.1.0 passed script-supplied remote paths to `sftp` and `scp` with incomplete quoting: a path containing a newline or carriage return could inject extra SFTP batch commands, and glob characters (`* ? [ ]`) were expanded by OpenSSH on downloads. 0.1.1 rejects control characters in paths, neutralizes glob characters, ends options with `--`, and prefixes ambiguous local names; upgrade if your scripts pass paths they did not write themselves.
 
-## Install lmctl
+## Install lmctl in a private prefix
 
-Everything in this repository runs through [lmctl](https://lmctl.com), the core tool of the lmctl family. Install it once, then run any `.lms` file or raw URL:
+The executable prompt recipe runs through [lmctl](https://lmctl.com), the core tool of the lmctl family. Install it in a repository-local prefix:
 
 ```bash
-npm install -g @lmctl-ai/lmctl
-lmctl autorun examples/deploy-file.lms
-lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmssh/main/examples/deploy-file.lms
+npm install --prefix ./.lmctl --no-save --package-lock=false @lmctl-ai/lmctl@latest
+PATH="$PWD/.lmctl/node_modules/.bin:$PATH" lmctl --help
 ```
 
 ## Gallery
@@ -35,18 +34,18 @@ lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmssh/main/examples/dep
 | **Fleet execution** | **Atomic file deployment** | **Known hosts inventory** |
 | --- | --- | --- |
 | <img src="docs/images/fleet-check.png" width="290" alt="fleet-check"> | <img src="docs/images/deploy-file.png" width="290" alt="deploy-file"> | <img src="docs/images/known-hosts.png" width="290" alt="known-hosts"> |
-| Parallel command execution across a server fleet with aggregate reporting.<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmssh/main/examples/fleet-check.lms` | SFTP upload, sha256 checksum verification, and atomic file replacement.<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmssh/main/examples/deploy-file.lms` | Query known_hosts inventory and detect unverified endpoints.<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmssh/main/examples/known-hosts.lms` |
+| Parallel command execution across a server fleet with aggregate reporting.<br>[compile-only lmcode source](examples/fleet-check.lms) | SFTP upload, sha256 checksum verification, and atomic file replacement.<br>[compile-only lmcode source](examples/deploy-file.lms) | Query known_hosts inventory and detect unverified endpoints.<br>[compile-only lmcode source](examples/known-hosts.lms) |
 
 | **Key signing & verification** | **CA & certificate issuance** | **lmssh CLI & Schema** |
 | --- | --- | --- |
 | <img src="docs/images/sign-verify.png" width="290" alt="sign-verify"> | <img src="docs/images/issue-cert.png" width="290" alt="issue-cert"> | <img src="docs/images/lmssh-cli.png" width="290" alt="lmssh-cli"> |
-| Cryptographic file signing with SSH Ed25519 keys and tamper validation.<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmssh/main/examples/sign-verify.lms` | Generate Certificate Authority, user keys, and issue SSH certificates.<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmssh/main/examples/issue-cert.lms` | Embedded OpenSSH 10.6p1 suite and strongly typed DSL schema.<br>`lmssh --version && lmssh ssh -V` |
+| Cryptographic file signing with SSH Ed25519 keys and tamper validation.<br>[compile-only lmcode source](examples/sign-verify.lms) | Generate Certificate Authority, user keys, and issue SSH certificates.<br>[compile-only lmcode source](examples/issue-cert.lms) | Embedded OpenSSH 10.6p1 suite and strongly typed lmcode schema.<br>`lmssh --version && lmssh ssh -V` |
 
 ## A script
 
 ```
-# fleet-check.lms — run a command on every host in parallel and report who failed
-p = _lmcode_ schema="schema/lmssh.dsl.json";
+# fleet-check.lms — compile-only lmcode source; run the generated program with lmssh
+program = _lmcode_ schema="schema/lmssh.host.json";
 let hosts = str_list().add("web1").add("web2").add("db1");
 ssh.parallel(16).timeout(60);
 let results = ssh.each(hosts, "systemctl is-active nginx");
@@ -57,17 +56,23 @@ for (i in range(0, results.len())) {
 report.print();
 report.fail_if_any();
 end _lmcode_
-savedsl(p, "fleet-check.dslb");
 ```
 
 ```sh
-lmscript fleet-check.lms            # compile against the schema (lmssh --lmcode-schema --json prints it)
-lmssh --lmcode fleet-check.dslb        # run; exit 0 ok, 3 run/load error, 4 the script's own verdict
-lmssh --dry-run --lmcode fleet-check.dslb   # print every ssh/scp/sftp/ssh-keygen command, run none
+lmssh --lmcode examples/compiled/fleet-check.dslb        # run; exit 0 ok, 3 run/load error, 4 the script's own verdict
+lmssh --dry-run --lmcode examples/compiled/fleet-check.dslb   # print every ssh/scp/sftp/ssh-keygen command, run none
 lmssh --lmcode job.dslb -- arg1 arg2   # script arguments, read with io.args()
 ```
 
-The API covers sessions (`exec`, `output`, `put`, `get`, `put_dir`, `get_dir`, `cat`, `write`, `ls`, `exists`, `mkdir`, `rm`, `rename`, raw `sftp` batches), parallel fan-out over many hosts, jump hosts, connection reuse, timeouts, password and passphrase prompts, key generation, fingerprints, certificates, signatures, `known_hosts` maintenance, and a small `io` and `report` toolbox. See [durable-memory/04-api.md](durable-memory/04-api.md) for the reference and [examples/](examples/) for ready-to-run scripts.
+The checked-in `.dslb` files are compiler-library outputs for the compile-only
+sources. Maintainers can regenerate one with a current mono build:
+`LMCODE_COMPILER_MODULE=/path/to/mono/lmscript/dist/dsl.js node scripts/compile-lmcode-fixture.mjs examples/fleet-check.lms examples/compiled/fleet-check.dslb`.
+
+The API covers sessions (`exec`, `output`, `put`, `get`, `put_dir`, `get_dir`, `cat`, `write`, `ls`, `exists`, `mkdir`, `rm`, `rename`, raw `sftp` batches), parallel fan-out over many hosts, jump hosts, connection reuse, timeouts, password and passphrase prompts, key generation, fingerprints, certificates, signatures, `known_hosts` maintenance, and a small `io` and `report` toolbox. See [durable-memory/04-api.md](durable-memory/04-api.md) for the reference and [examples/](examples/) for compile-only lmcode sources.
+
+The prompt recipe uses the pure `args_parse` option parser. Use an lmscript
+compiler that includes `args_parse` support; older published compiler versions
+do not recognize that function.
 
 ## Short host prompts
 
@@ -85,6 +90,11 @@ function `set_host_prompt(destination, label, expected_hostname, apply)` lets
 fleet scripts configure each host with one parameterized call. See the
 [recipe guide](recipes/README.md). Remote prerequisites are Python 3 and
 Bash 4.4+; existing shells pick up changes after `source ~/.bashrc` or reconnecting.
+The prompt source uses `args_parse`, which is present on mono main but not yet in
+the currently published npm compiler. The inner f-string example uses the same
+mono-main compiler feature. Both source forms are checked with mono main; the
+current npm test gate checks the pinned bytecode and skips only those source
+checks until the feature release is available.
 
 ## How it works
 

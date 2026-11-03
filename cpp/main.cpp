@@ -16,7 +16,7 @@ const char *kUsage =
     "usage: lmssh --version | --lmcode-schema [--json] | --lmcode-signatures | [--dry-run] --lmcode FILE [FILE ...] [-- ARG ...]\n"
     "       lmssh ssh|sftp|scp|ssh-keygen [OPENSSH OPTIONS ...]   the original OpenSSH clients, unchanged\n"
     "       (also run when this executable is invoked as ssh, sftp, scp or ssh-keygen)\n"
-    "automation: compile an lmscript _dsl_ block against `lmssh --lmcode-schema --json`, then run it with --lmcode.\n";
+    "automation: compile an lmscript _lmcode_ program against `lmssh --lmcode-schema --json`, then run it with --lmcode.\n";
 
 bool is_tool_name(const std::string &name, lmssh_tool &tool) {
   if (name == "ssh") tool = LMSSH_SSH;

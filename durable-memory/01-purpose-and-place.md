@@ -1,6 +1,6 @@
 # Purpose and place
 
-lmssh is a single, statically linked executable for **automating SSH**. It contains OpenSSH's client programs — `ssh`, `sftp`, `scp`, `ssh-keygen` — and a bytecode VM ([lmcode-cpp](https://github.com/lmctl-ai/lmcode-cpp) `dslvm.hpp`) that runs lmscript `_dsl_` programs against a schema describing what the host offers. It follows the same pattern as the sibling hosts `../lmhtml` (HTML, lexbor) and `../lmcad`: the host owns the process and the objects, the script only calls what the registry offers.
+lmssh is a single, statically linked executable for **automating SSH**. It contains OpenSSH's client programs — `ssh`, `sftp`, `scp`, `ssh-keygen` — and a bytecode VM ([lmcode-cpp](https://github.com/lmctl-ai/lmcode-cpp) `dslvm.hpp`) that runs lmscript `_lmcode_` programs against a schema describing what the host offers. It follows the same pattern as the sibling hosts `../lmhtml` (HTML, lexbor) and `../lmcad`: the host owns the process and the objects, the script only calls what the registry offers.
 
 ## What it is for
 
@@ -9,7 +9,7 @@ Scripts that run commands across machines, move and verify files, rotate or issu
 ## What it is not
 
 - **Not a replacement for OpenSSH.** There is no server (`sshd`), no `ssh-agent`/`ssh-add`, no `ssh-keyscan`. For interactive use, `lmssh ssh|sftp|scp|ssh-keygen ARGS` runs the original program with its original options, and nothing about those options was re-invented.
-- **Not a reimplementation.** The protocol work is OpenSSH's own code (tag `V_10_6_P1`), including `ssh_config` parsing, `known_hosts` handling, `ProxyJump`, multiplexing, certificates and the sftp client. The DSL builds argument vectors for those programs and reads their results.
+- **Not a reimplementation.** The protocol work is OpenSSH's own code (tag `V_10_6_P1`), including `ssh_config` parsing, `known_hosts` handling, `ProxyJump`, multiplexing, certificates and the sftp client. lmcode programs build argument vectors for those programs and read their results.
 - **Not an API mirror of the command-line options.** The task was explicit: no need to expose the original option set to scripts. Anything not covered by a setter can be passed with `option("Key=Value")` (ssh `-o`), `config(path)` (`-F`), or a raw `sftp` batch.
 
 ## Scope boundary: host vs script

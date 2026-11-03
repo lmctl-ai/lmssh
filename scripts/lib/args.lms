@@ -1,0 +1,19 @@
+# Pure parser adapter. Preserve the old accepted aliases, duplicate flag behavior,
+# positional ordering, and rejection of other double-dash options.
+fn parse_prompt_args(argv){
+  let flags=[];let positional=[];let apply_seen=false;let preview_seen=false;
+  for(arg in argv){
+    if(arg=="--apply"){
+      if(!apply_seen){push(flags,"--apply");apply_seen=true;}
+    }else if(arg=="--preview"||arg=="--dry-run"){
+      if(!preview_seen){push(flags,"--preview");preview_seen=true;}
+    }else{
+      assert(!starts_with(arg,"--"),"unknown flag: "+arg);
+      push(positional,arg);
+    }
+  }
+  let parsed=args_parse(flags,{apply:{type:"boolean",description:"Apply the prompt update"},preview:{type:"boolean",description:"Check without writing"}},"DEST LABEL [EXPECTED_HOSTNAME] [--apply | --preview]");
+  assert(len(positional)>=2&&len(positional)<=3,"usage: DEST LABEL [EXPECTED_HOSTNAME] [--apply]");
+  assert(!(parsed.values.apply&&parsed.values.preview),"choose preview or apply");
+  return {destination:positional[0],label:positional[1],expected_hostname:len(positional)==3?positional[2]:"",apply:parsed.values.apply,preview:parsed.values.preview};
+}
