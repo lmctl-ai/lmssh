@@ -14,8 +14,18 @@ const body=source.slice(start,close).replace(/\r\n/g,'\n');
 const schema=path.resolve(path.dirname(input),header[1]);
 const headerLine=source.slice(0,header.index).split(/\r?\n/).length;
 const sourceMapper=(lineIndex,column)=>({line:headerLine+1+lineIndex,column});
-const {parseDslSchema,compileDsl}=await import(pathToFileURL(process.env.LMCODE_COMPILER_MODULE).href);
-const compiled=compileDsl(body.split('\n'),parseDslSchema(fs.readFileSync(schema),schema),sourceMapper);
+// A .lms body belongs to the lmscript layer, even in a maintainer fixture tool.
+// Reconstruct only the trusted block; unrelated outer statements are never run.
+const moduleUrl=pathToFileURL(process.env.LMCODE_COMPILER_MODULE);
+const {CompiledDsl}=await import(moduleUrl.href);
+const {LMScript}=await import(new URL('./lmscript.js',moduleUrl).href);
+const engine=new LMScript();let bytes;
+engine.registerFunction('fixture_capture',p=>{bytes=CompiledDsl.bytesOf(p);return true;},1,{returnType:'boolean'});
+const wrapper='\n'.repeat(headerLine-1)+'fixture_program = _lmcode_ schema='+JSON.stringify(schema)+';\n'+body+'\nend _lmcode_\nfixture_capture(fixture_program);';
+const result=engine.run(wrapper,{file:path.resolve(input),baseDir:path.dirname(path.resolve(input)),hostContext:{cwd:path.dirname(path.resolve(input)),env:{}}});
+if(!result.success)throw Error(result.diagnostics.map(d=>d.line+':'+d.column+': '+d.message).join('\n'));
+if(!bytes)throw Error('fixture did not construct a program');
+const compiled={bytes};
 fs.mkdirSync(path.dirname(path.resolve(output)),{recursive:true});
 fs.writeFileSync(output,compiled.bytes);
 

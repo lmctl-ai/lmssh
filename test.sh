@@ -81,6 +81,9 @@ else
   echo "SKIP args_parse source checks: selected published compiler predates mono-main args_parse"
 fi
 
+LMSCRIPT_BIN="$LMSCRIPT" NEW_LANGUAGE_FEATURES="$NEW_FEATURES" python3 scripts/test-body-expansion.py || fail "fixture body expansion"
+ok "fixture body expansion without outer effects"
+
 # ---- identity, schema, static linking ----
 want_version="$(sed -n 's/^project(lmssh VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
 [ "$("$HOST" --version)" = "lmssh $want_version" ] || fail "--version"

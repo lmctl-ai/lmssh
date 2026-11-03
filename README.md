@@ -129,3 +129,10 @@ No server, agent (`ssh-add`, `ssh-agent`), `ssh-keyscan`, PKCS#11 or FIDO/securi
 lmssh-authored code is MIT licensed; see [LICENSE](LICENSE). The bundled OpenSSH, OpenSSL, zlib and runtime libraries keep their own permissive licences: see [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES), which carries the upstream notices that binary redistribution requires.
 
 lmssh is a derived work of OpenSSH and is not affiliated with or endorsed by the OpenSSH project. Made by **Lattice Systems LLC**.
+
+Maintainer fixture compilation uses the lmscript body-compilation layer, including
+formatted strings, rather than passing a raw `.lms` body to the standalone lmcode
+compiler. `scripts/compile-lmcode-fixture.mjs` reconstructs only the selected block
+and retains its physical line positions; unrelated outer statements are not run.
+The two formatted sources keep their complete pinned bytecode. The source-compiler
+regression in `scripts/test-body-expansion.py` checks both that parity and isolation.

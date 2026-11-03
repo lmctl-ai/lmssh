@@ -3,7 +3,7 @@
   "sha256": {
     "schema/lmssh.host.json": "9060ecf42e76ed2a89efd7a088a85ee85210dbcdbca8657ad060c171e5f05588",
     "cpp/std/lmcode-std.schema.json": "1defd1be67bf11cf1780f7d890059cd2ac6fd506a7b7fa578e31b5ef124aa221",
-    "scripts/compile-lmcode-fixture.mjs": "8e290f6d8d7ccd329c0e90219a48142b2de1628a4db98fecd501cd3658b9b473",
+    "scripts/compile-lmcode-fixture.mjs": "ffed27e841ac07d0cc0158250c1162dae130d71e9d220a47484e54563f90dab2",
     "scripts/verify-lmcode-fixtures.py": "02ba3dae7213dd0a9fe066ec356a10ce17f43458ea6d006d6fde292ad47c15fb",
     "scripts/lib/args.lms": "102dc86689d02436cabf46968afdf535f3a1664fd04e81b8f3df4c7c6b10e671",
     "scripts/lib/prompt.lms": "7bc1b5292aee9700acd33b36ecdeb99a8078642c6140ce4de1e97aef2b48fcfc",
@@ -60,6 +60,7 @@
     "tests/fixtures/lmcode/session.dslb": "944ab878e351579ece0297925e0a026c916337d36cbf76dd54e2a516d46145bd",
     "tests/fixtures/lmcode/sigs.dslb": "4341df109298b4316555f2be67f79a67991ccbc9c38382eb4a26149c8fffd9c7",
     "scripts/lib/prompt-bytecode.lms": "09b34adb266a10b3b6dc9149386a2e5aa3abc50fcd8b4bfd6bc2555000ea74ff",
-    "tests/prompt-command.cpp": "0b11cdfaf29589bc04c169ad87ea1531cdd5b80ceb7a535b5659e40aff7f5dc4"
+    "tests/prompt-command.cpp": "0b11cdfaf29589bc04c169ad87ea1531cdd5b80ceb7a535b5659e40aff7f5dc4",
+    "scripts/test-body-expansion.py": "49a95279585607b42027667dfa9da5e7ea27cabe6833b2760ffe6b075bfe2bbe"
   }
 }
