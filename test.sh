@@ -24,7 +24,7 @@ expect_contains(){ contains "$1" "$2" || fail "$3: expected '$2' in: $1"; }
 
 scripts/sync-sdk.sh --verify >/dev/null || fail "SDK header pin mismatch"
 ok "VM and catalog headers match sdk.lock"
-python3 scripts/merge-std.py schema/lmssh.host.json schema/lmssh.dsl.json
+python3 scripts/merge-std.py schema/lmssh.host.json "$WORK/lmssh.merged-schema.json"
 python3 scripts/verify-lmcode-fixtures.py tests/fixtures/lmcode/manifest.json || fail "lmcode fixture pins differ"
 python3 scripts/test-set-prompt.py
 ok "managed Bash prompt recipe preserves startup data and verifies rendered aliases"
