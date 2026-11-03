@@ -196,8 +196,13 @@ E2
   mkdir -p /run/sshd 2>/dev/null || true
   "$SSHD" -f "$WORK/sshd_config" -D -e >"$WORK/sshd.log" 2>&1 &
   SSHD_PID=$!
-  ps -p "$SSHD_PID" -o args= | grep -F -- "$WORK/sshd_config" >/dev/null || fail "started sshd pid identity did not match the owned config"
-  for _ in $(seq 1 50); do (exec 3<>"/dev/tcp/127.0.0.1/$PORT") 2>/dev/null && { E2E=1; break; }; sleep 0.1; done
+  SSHD_OWNED=0
+  for _ in $(seq 1 50); do
+    if ps -p "$SSHD_PID" -o args= | grep -F -- "$WORK/sshd_config" >/dev/null; then SSHD_OWNED=1; fi
+    if [ "$SSHD_OWNED" = 1 ] && (exec 3<>"/dev/tcp/127.0.0.1/$PORT") 2>/dev/null; then E2E=1; break; fi
+    sleep 0.1
+  done
+  [ "$SSHD_OWNED" = 1 ] || fail "started sshd pid identity did not match the owned config"
   [ "$E2E" = 1 ] || { echo "sshd did not start: $(cat "$WORK/sshd.log")" >&2; [ -z "${LMSSH_REQUIRE_SSHD:-}" ] || fail "sshd unusable"; }
 elif [ -n "${LMSSH_REQUIRE_SSHD:-}" ]; then fail "no sshd binary"; fi
 
