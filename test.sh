@@ -26,7 +26,9 @@ scripts/sync-sdk.sh --verify >/dev/null || fail "SDK header pin mismatch"
 ok "VM and catalog headers match sdk.lock"
 python3 scripts/merge-std.py schema/lmssh.host.json "$WORK/lmssh.merged-schema.json"
 python3 scripts/verify-lmcode-fixtures.py tests/fixtures/lmcode/manifest.json || fail "lmcode fixture pins differ"
-python3 scripts/test-set-prompt.py
+mkdir -p "$BUILD_DIR"
+"${CXX:-c++}" -std=c++17 -O0 -Icpp tests/prompt-command.cpp -o "$BUILD_DIR/prompt-command"
+LMSSH_PROMPT_DRIVER="$HERE/$BUILD_DIR/prompt-command" python3 scripts/test-set-prompt.py
 ok "managed Bash prompt recipe preserves startup data and verifies rendered aliases"
 if [ -z "${SKIP_BUILD:-}" ]; then
   scripts/sync-openssh.sh --verify >/dev/null 2>&1 || scripts/sync-openssh.sh >/dev/null

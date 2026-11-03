@@ -10,11 +10,10 @@ import subprocess
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
-source = (ROOT / "scripts/lib/prompt-program.lms").read_text()
-match = re.search(r'let prompt_python\s*=\s*<<PROMPT_PYTHON;\r?\n(.*?)\r?\nPROMPT_PYTHON\s*$', source, re.S | re.M)
-assert match
-payload = match.group(1)
-compile(payload, "prompt payload", "exec")
+DRIVER = Path(os.environ.get("LMSSH_PROMPT_DRIVER", ROOT / "build/prompt-command"))
+BYTECODE = ROOT / "scripts/fixtures/prompt.dslb"
+SCHEMA = ROOT / "schema/lmssh.host.json"
+
 
 
 def main():
@@ -31,17 +30,46 @@ def main():
         rc.write_bytes(original)
         rc.chmod(0o640)
 
+        transport = home / "transport-bin"
+        transport.mkdir()
+        fake = transport / "lmssh"
+        fake.write_text("#!/usr/bin/env python3\n" + r'''
+import os,sys,subprocess,tempfile,shlex
+from pathlib import Path
+assert sys.argv[1] == "--lmcode" and sys.argv[3] == "--"
+code=Path(sys.argv[2]); assert code.is_absolute() and code.is_file(), "bytecode must be absolute and present"
+assert code.read_bytes()==Path(os.environ["LMSSH_TEST_BYTECODE"]).read_bytes(), "runtime bytes differ from pin"
+with tempfile.TemporaryDirectory(dir=os.environ["HOME"]) as work:
+ command,payload=Path(work)/"command",Path(work)/"payload"
+ r=subprocess.run([os.environ["LMSSH_PROMPT_DRIVER"],str(code),os.environ["LMSSH_TEST_SCHEMA"],str(command),str(payload),*sys.argv[4:]],capture_output=True,text=True)
+ if r.returncode:sys.stderr.write(r.stderr);sys.exit(r.returncode)
+ r=subprocess.run(shlex.split(command.read_text()),input=payload.read_text(),capture_output=True,text=True)
+ sys.stdout.write(r.stdout);sys.stdout.write(__import__("json").dumps({"ok":r.returncode==0,"result":None})+"\n");sys.stderr.write(r.stderr);sys.exit(r.returncode)
+''')
+        fake.chmod(0o755)
+        compiler=os.environ.get("LMSCRIPT_BIN", "lmscript")
+        foreign=home/"foreign";foreign.mkdir()
         def run(apply=False, label="t4g2", expected=None, ok=True, extra_env=None):
-            options = dict(label=label, expected_hostname=socket.gethostname() if expected is None else expected, apply=apply)
-            env = dict(os.environ, HOME=str(home))
+            expected=socket.gethostname() if expected is None else expected
+            source='import '+json.dumps(str(ROOT/"scripts/lib/prompt.lms"))+'; set_host_prompt("fixture-destination",'+json.dumps(label)+','+json.dumps(expected)+','+str(apply).lower()+');'
+            env=dict(os.environ,HOME=str(home),LMSSH_PROMPT_DRIVER=str(DRIVER),LMSSH_TEST_BYTECODE=str(BYTECODE),LMSSH_TEST_SCHEMA=str(SCHEMA))
             env.update(extra_env or {})
-            result = subprocess.run(["python3", "-", json.dumps(options)], input=payload,
-                                    env=env, text=True, capture_output=True, timeout=45)
-            assert (result.returncode == 0) == ok, result.stdout + result.stderr
-            assert canary not in result.stdout + result.stderr
-            return json.loads(result.stdout) if ok else result
+            env["PATH"]=str(transport)+os.pathsep+env["PATH"]
+            result=subprocess.run([compiler,"-e",source],cwd=foreign,env=env,text=True,capture_output=True)
+            assert (result.returncode==0)==ok,result.stdout+result.stderr
+            assert canary not in result.stdout+result.stderr
+            if not ok:return result
+            lines=[json.loads(line) for line in result.stdout.splitlines() if line.strip()]
+            assert len(lines)==2 and lines[-1]=={"ok":True,"result":None},lines
+            return lines[0]
 
+        # Original decoded transport used double backslashes. Keep the corrected
+        # Bash encoding explicit rather than accidentally changing it while moving source.
+        legacy_ps1 = r"t4g2:\\w\\$ "
+        canonical_ps1 = r"t4g2:\w\$ "
+        assert canonical_ps1 == legacy_ps1.replace("\\\\", "\\")
         preview = run()
+        assert preview["desired_ps1"] == canonical_ps1
         assert preview["status"] == "preview" and rc.read_bytes() == original
         assert not (home / ".local/state/lmssh/prompt-backups").exists()
         changed = run(apply=True)

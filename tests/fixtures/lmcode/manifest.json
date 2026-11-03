@@ -1,19 +1,19 @@
 {
-  "compiler_main": "bc5646d07cc59e6c940cc2312276ed0aa7bdcb6a",
+  "compiler_main": "44b8aefe23f4c1c00dbf34c9d44673401805cd5f",
   "sha256": {
     "schema/lmssh.host.json": "9060ecf42e76ed2a89efd7a088a85ee85210dbcdbca8657ad060c171e5f05588",
     "cpp/std/lmcode-std.schema.json": "1defd1be67bf11cf1780f7d890059cd2ac6fd506a7b7fa578e31b5ef124aa221",
-    "scripts/compile-lmcode-fixture.mjs": "af6ce8b15fbe06b3caa8ee7a937f49295cab141de163cffce183e0ed2f88e7eb",
+    "scripts/compile-lmcode-fixture.mjs": "8e290f6d8d7ccd329c0e90219a48142b2de1628a4db98fecd501cd3658b9b473",
     "scripts/verify-lmcode-fixtures.py": "02ba3dae7213dd0a9fe066ec356a10ce17f43458ea6d006d6fde292ad47c15fb",
     "scripts/lib/args.lms": "102dc86689d02436cabf46968afdf535f3a1664fd04e81b8f3df4c7c6b10e671",
-    "scripts/lib/prompt.lms": "107584fb72c2137bd820e3129448bd327f626d0abb267d43cab203c5d0021033",
-    "scripts/lib/prompt-program.lms": "9433db7ccd175ed09d391479c09da07d4fb9cb6a33b0dd81d59da52d7c5533f3",
+    "scripts/lib/prompt.lms": "7bc1b5292aee9700acd33b36ecdeb99a8078642c6140ce4de1e97aef2b48fcfc",
+    "scripts/lib/prompt-program.lms": "7f47012bf209fd40027538d076eada215d0f90a1250e09b0a60eac17e5a5d581",
     "scripts/test-args-parser.py": "5ddce06476aec74c95f263a95ea2f94ad9c35beaa22bbfc3c5833f72661e8029",
-    "scripts/test-set-prompt.py": "738b7dea39f9ebad28df8364261dd31eb37935d10b05919dd3304c16d77924d5",
+    "scripts/test-set-prompt.py": "fcd798eadb2cf979732f6de902b8cd87cfacdcec0745c7aaeade223879199caf",
     "recipes/set-prompt.lms": "7a67f6c8625622c027fcd9fee5f62df3d540db2151c7a709ea3c7f2ed7e51398",
-    "tests/fixtures/lmcode/README.md": "97a43c8796020e94d5249973785f3fa0bd27b4f46897c260d517c179c3e1425a",
+    "tests/fixtures/lmcode/README.md": "ea034aad8bba0ddbdcd510c283359be83f4980de1d2b2816a1f6558859298e18",
     "tests/fixtures/lmcode/other-schema.json": "006b973bb1f8932d35aa303347a4be6e14447d3dcd8e7ead3c16103a82e70634",
-    "scripts/fixtures/prompt.dslb": "7f1a6cca37d63dc0ebd1ae06227d813a676a01d4a9ce0914da07a4777ccec8d9",
+    "scripts/fixtures/prompt.dslb": "9967daa02ebda7d1484dcd66a8db2726ea2cc51b8d1b4756673d199ee4dded0d",
     "examples/deploy-file.lms": "411147206a375e1193886e6d3ddd9cab2e39fa39c134b80272486d505c18e113",
     "examples/fetch-files.lms": "612587c6790340ef56078b9b23d0ea7934c2fc265120bf420fdad35b868ef47a",
     "examples/fleet-check.lms": "eecbbb4a5b5d6a79ff5eaaccb55de546dc3ba01e1cfefc6b20ccd8b1ad836042",
@@ -58,6 +58,8 @@
     "tests/fixtures/lmcode/other-schema.dslb": "8c0d96f3d7ec084cd577f5201c2a15f7e5f3e45b9d217a21fa53e9c9c2bd3f2f",
     "tests/fixtures/lmcode/prompt.dslb": "7f1a6cca37d63dc0ebd1ae06227d813a676a01d4a9ce0914da07a4777ccec8d9",
     "tests/fixtures/lmcode/session.dslb": "944ab878e351579ece0297925e0a026c916337d36cbf76dd54e2a516d46145bd",
-    "tests/fixtures/lmcode/sigs.dslb": "4341df109298b4316555f2be67f79a67991ccbc9c38382eb4a26149c8fffd9c7"
+    "tests/fixtures/lmcode/sigs.dslb": "4341df109298b4316555f2be67f79a67991ccbc9c38382eb4a26149c8fffd9c7",
+    "scripts/lib/prompt-bytecode.lms": "09b34adb266a10b3b6dc9149386a2e5aa3abc50fcd8b4bfd6bc2555000ea74ff",
+    "tests/prompt-command.cpp": "0b11cdfaf29589bc04c169ad87ea1531cdd5b80ceb7a535b5659e40aff7f5dc4"
   }
 }

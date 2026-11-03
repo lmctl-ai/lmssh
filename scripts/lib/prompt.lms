@@ -1,8 +1,12 @@
-# Caller-side wrapper for the compile-only prompt program.
-# Generate tests/fixtures/lmcode/prompt.dslb with scripts/compile-lmcode-fixture.mjs first.
+# Pinned data is imported relative to this module, independent of the caller cwd.
+import "./prompt-bytecode.lms";
 fn set_host_prompt(destination,label,expected_hostname,apply){
-  let args=["lmssh","--lmcode","tests/fixtures/lmcode/prompt.dslb","--",destination,label,expected_hostname,apply?"true":"false"];
-  let result=system(args);
+  assert(regex_test(label,"^[a-z][a-z0-9-]{0,31}$"),"prompt label must be a short lowercase host alias");
+  assert(destination!=""&&!starts_with(destination,"-")&&!contains(destination,"\n")&&!contains(destination,"\r"),"invalid SSH destination");
+  let options=json_stringify({label:label,expected_hostname:expected_hostname,apply:apply});
+  let code=temp_file();
+  let launch="const fs=require('node:fs'),cp=require('node:child_process');const file=process.argv[1];try{fs.writeFileSync(file,Buffer.from(process.argv[2],'base64'));const r=cp.spawnSync('lmssh',['--lmcode',file,'--',...process.argv.slice(3)],{encoding:'utf8',maxBuffer:Infinity});if(r.stdout)process.stdout.write(r.stdout);if(r.stderr)process.stderr.write(r.stderr);if(r.error)throw r.error;process.exitCode=r.status??1;}finally{fs.unlinkSync(file);}";
+  let result=system(["node","-e",launch,code,prompt_bytecode_base64(),destination,options],{timeoutMs:0});
   println(result.stdout);
   if(result.stderr!=""){println(result.stderr);}
   assert(result.code==0,"prompt update failed for "+destination);
